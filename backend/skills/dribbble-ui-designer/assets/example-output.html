@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>输出范例 — FlowDash SaaS 控制台 | Dribbble UI Designer</title>
+
+<!--
+  ═══════════════════════════════════════════════════════════════
+  📋 关于此范例
+  ═══════════════════════════════════════════════════════════════
+  这是一个 Dribbble 品质的输出范例，展示 Skill 期望的输出形态。
+
+  本次设计决策:
+  ─────────────────────────────────────────────────────────────
+  品牌人格:  现代科技 SaaS（非刻板蓝紫风格）
+  色彩方案:  #22 "Learning Lab" — 柔和紫罗兰 + 蒂芙尼青点缀
+  字体配对:  Space Grotesk (标题) + Inter (正文) + JetBrains Mono (数字)
+  质感系统:  渐变弥散 (Hero 区域) + 柔和投影 (卡片)
+  布局策略:  Bento Grid (2:1:1 比例) + 不对称分栏 (60/40 Hero)
+
+  反 AI 感刻意选择:
+  ─────────────────────────────────────────────────────────────
+  ✅ 无蓝紫渐变 — 主色是柔和紫罗兰 #6C5CE7，非蓝紫系
+  ✅ 非纯白底 — 背景使用暖紫白 #FAF9FF
+  ✅ 非三列网格 — 使用 Bento Grid 不等宽布局
+  ✅ 非统一圆角 — 不同组件使用不同圆角（20px/16px/12px/8px）
+  ✅ 非统一间距 — 区块间距 80px，卡片间距 20px，内边距 32px
+  ✅ 标题/正文不同字体 — Space Grotesk vs Inter
+  ✅ 真实内容 — 无 Lorem Ipsum
+  ✅ 设计亮点 — 数据计数动画 + 卡片 hover 微交互
+  ✅ CSS Token 系统 — 使用 :root 自定义属性
+  ═══════════════════════════════════════════════════════════════
+-->
+
+<!-- [DESIGN_TOKEN] 字体引入 — 提前连接 Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════════════════
+   [DESIGN_TOKEN] CSS 自定义属性 — 设计系统的唯一真相源
+   ═══════════════════════════════════════════════════════ */
+:root {
+  /* 品牌色 (来自 Learning Lab 方案) */
+  --color-primary:    #6C5CE7;   /* 柔和紫罗兰 */
+  --color-primary-dim:#8B7FE8;   /* hover 状态提亮 */
+  --color-secondary:  #F8F7FF;   /* 极淡紫白 */
+  --color-accent:     #00CEC9;   /* 蒂芙尼青 — 非常规强调色 */
+  --color-accent-dim: #00B5B0;
+
+  /* 中性色 — 不是纯白/纯黑 */
+  --bg-primary:       #FAF9FF;   /* 暖紫白 (#FFF 会产生 AI 感) */
+  --bg-card:          #FFFFFF;
+  --bg-elevated:      #F3F0FF;   /* 悬浮卡片背景 */
+  --text-primary:     #2D2B3C;
+  --text-secondary:   #6E6B7B;
+  --text-muted:       #9E9BAE;
+  --border-subtle:    rgba(108, 92, 231, 0.12);
+  --border-strong:    rgba(108, 92, 231, 0.25);
+
+  /* 间距系统 — 至少 3 个不同值 (非等间距) */
+  --space-xs:  8px;
+  --space-sm:  12px;
+  --space-md:  20px;
+  --space-lg:  32px;
+  --space-xl:  48px;
+  --space-2xl: 80px;
+
+  /* 圆角系统 — 至少 4 个不同值 (非统一圆角) */
+  --radius-sm:  8px;    /* 按钮小 */
+  --radius-md:  12px;   /* 按钮大 / 输入框 */
+  --radius-lg:  16px;   /* 卡片 */
+  --radius-xl:  20px;   /* 大卡片 / 弹窗 */
+  --radius-full: 9999px; /* 标签 / 头像 */
+
+  /* 阴影系统 — 至少 3 种不同参数 (非统一阴影) */
+  --shadow-sm:  0 1px 3px rgba(108, 92, 231, 0.06);
+  --shadow-md:  0 4px 16px rgba(108, 92, 231, 0.08);
+  --shadow-lg:  0 12px 40px rgba(108, 92, 231, 0.12);
+  --shadow-glow:0 0 0 3px rgba(0, 206, 201, 0.25);
+
+  /* [HIGHLIGHT] 字体 Token */
+  --font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+}
+
+/* ═══════════════════════════════════════════════════════
+   全局重置 & 基础排版
+   ═══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: var(--font-heading); line-height: 1.15; }
+h1 { font-size: 3.052rem; font-weight: 700; letter-spacing: -0.03em; }
+h2 { font-size: 2.441rem; font-weight: 600; letter-spacing: -0.02em; }
+h3 { font-size: 1.563rem; font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════════
+   Hero — 不对称分栏 (60/40) + 渐变弥散装饰
+   ═══════════════════════════════════════════════════════ */
+.hero {
+  min-height: 90vh;
+  display: grid;
+  grid-template-columns: 3fr 2fr;  /* [CHOICE] 60/40 非对称，不用 50/50 */
+  align-items: center;
+  gap: 80px;
+  padding: 0 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* [DELIGHT] 渐变弥散光斑 — 使用 radial-gradient 非线性渐变 */
+.hero::before {
+  content: '';
+  position: absolute;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(108,92,231,0.12), transparent 70%);
+  top: -200px; right: -150px;
+  pointer-events: none;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(0,206,201,0.10), transparent 70%);
+  bottom: -80px; left: 10%;
+  pointer-events: none;
+}
+
+.hero-content { position: relative; z-index: 1; }
+.hero-badge {
+  display: inline-block;
+  background: var(--color-secondary);
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-lg);
+  letter-spacing: 0.02em;
+}
+.hero h1 {
+  margin-bottom: var(--space-md);
+  max-width: 600px;
+}
+.hero p {
+  color: var(--text-secondary);
+  font-size: 1.125rem;
+  line-height: 1.7;
+  max-width: 520px;
+  margin-bottom: var(--space-lg);
+}
+
+/* CTA 按钮组 — 品牌个性文案 */
+.hero-actions { display: flex; gap: var(--space-sm); align-items: center; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-heading); font-weight: 600; font-size: 0.938rem;
+  padding: 14px 28px; border-radius: var(--radius-md); border: none; cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+.btn-primary {
+  background: var(--color-primary); color: #FFF;
+  box-shadow: var(--shadow-md);
+}
+.btn-primary:hover {
+  background: var(--color-primary-dim);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+.btn-ghost {
+  background: transparent; color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+}
+.btn-ghost:hover {
+  background: var(--color-secondary);
+  border-color: var(--color-primary);
+}
+
+/* Hero 右侧 — 装饰卡片 */
+.hero-visual {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.hero-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-lg);
+  width: 340px;
+  border: 1px solid var(--border-subtle);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Bento Grid — 不等宽网格布局
+   ═══════════════════════════════════════════════════════ */
+.section-features {
+  max-width: 1200px; margin: 0 auto;
+  padding: 0 80px var(--space-2xl);
+}
+.section-features h2 {
+  margin-bottom: var(--space-sm);
+}
+.section-features > p {
+  color: var(--text-secondary); font-size: 1.125rem;
+  margin-bottom: var(--space-xl);
+}
+
+/* [LAYOUT] Bento Grid — 4列不等宽，非三列等宽 */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 180px;
+  gap: var(--space-md);
+}
+.bento-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.bento-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-strong);
+}
+
+/* [LAYOUT] Bento 尺寸变体 — 非统一大小 */
+.bento-lg  { grid-column: span 2; grid-row: span 2; }  /* 主卡 2x2 */
+.bento-wide{ grid-column: span 2; grid-row: span 1; }  /* 横卡 2x1 */
+.bento-tall { grid-column: span 1; grid-row: span 2; }  /* 竖卡 1x2 */
+.bento-sm   { grid-column: span 1; grid-row: span 1; }  /* 小卡 1x1 */
+
+.bento-icon {
+  width: 48px; height: 48px;
+  border-radius: var(--radius-lg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem;
+}
+.bento-icon-primary { background: var(--color-secondary); color: var(--color-primary); }
+.bento-icon-accent  { background: rgba(0,206,201,0.1); color: var(--color-accent-dim); }
+
+.bento-label {
+  font-family: var(--font-mono); font-size: 0.75rem; font-weight: 500;
+  color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;
+}
+.bento-value {
+  font-family: var(--font-heading); font-size: 2.441rem; font-weight: 700;
+  color: var(--text-primary); letter-spacing: -0.02em;
+}
+.bento-value span {
+  font-family: var(--font-body); font-size: 0.875rem;
+  color: var(--color-accent-dim); font-weight: 500; margin-left: 8px;
+}
+
+/* [DELIGHT] 迷你柱状图 — 纯 CSS */
+.bento-chart {
+  display: flex; align-items: flex-end; gap: 6px; height: 60px;
+}
+.bento-chart .bar {
+  flex: 1; border-radius: 4px 4px 0 0;
+  background: var(--color-primary);
+  opacity: 0.15;
+  transition: opacity 0.3s ease, background 0.3s ease;
+}
+.bento-chart .bar:nth-child(3) { opacity: 0.5; }
+.bento-chart .bar:nth-child(5) { opacity: 0.8; background: var(--color-accent); }
+.bento-card:hover .bento-chart .bar { opacity: 0.3; }
+.bento-card:hover .bento-chart .bar:nth-child(3) { opacity: 0.7; }
+.bento-card:hover .bento-chart .bar:nth-child(5) { opacity: 1; }
+
+/* ═══════════════════════════════════════════════════════
+   Stats Row — 指标卡
+   ═══════════════════════════════════════════════════════ */
+.section-stats {
+  max-width: 1200px; margin: 0 auto;
+  padding: 0 80px var(--space-2xl);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+}
+.stat-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  border: 1px solid var(--border-subtle);
+  transition: box-shadow 0.3s ease;
+}
+.stat-card:hover {
+  box-shadow: var(--shadow-lg);
+}
+.stat-label {
+  font-family: var(--font-mono); font-size: 0.75rem; font-weight: 500;
+  color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;
+  margin-bottom: var(--space-xs);
+}
+.stat-number {
+  font-family: var(--font-heading); font-size: 2.441rem; font-weight: 700;
+  color: var(--text-primary); letter-spacing: -0.02em;
+}
+.stat-change {
+  font-family: var(--font-mono); font-size: 0.875rem; font-weight: 500;
+  margin-top: var(--space-sm);
+}
+.stat-change.up   { color: #00B894; }
+.stat-change.down { color: #E17055; }
+
+/* ═══════════════════════════════════════════════════════
+   响应式 — mobile / tablet / desktop
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 48px;
+    padding: 60px 40px;
+    min-height: auto;
+  }
+  .bento-grid { grid-template-columns: repeat(2, 1fr); }
+  .bento-lg, .bento-wide { grid-column: span 2; }
+  .section-features, .section-stats { padding: 0 40px 60px; }
+  h1 { font-size: 2.441rem; }
+}
+
+@media (max-width: 640px) {
+  .hero { padding: 40px 20px; }
+  .bento-grid { grid-template-columns: 1fr; grid-auto-rows: auto; }
+  .bento-lg, .bento-wide, .bento-tall, .bento-sm {
+    grid-column: span 1; grid-row: span 1;
+  }
+  .section-features, .section-stats { padding: 0 20px 40px; }
+  .section-stats { grid-template-columns: 1fr; }
+  h1 { font-size: 1.953rem; }
+  h2 { font-size: 1.563rem; }
+  .hero-actions { flex-direction: column; }
+  .hero-actions .btn { width: 100%; text-align: center; justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ Hero — 60/40 不对称分栏 ═══════════ -->
+<header class="hero" data-design-token="hero-section">
+  <div class="hero-content">
+    <span class="hero-badge" data-design-token="badge">v2.4 — 本周更新</span>
+    <h1>让数据主动为你工作，<br>而不是你去翻数据</h1>
+    <p>FlowDash 是新一代经营分析工具，自动发现异常、追踪趋势、给出具体建议。不堆砌图表，只给可执行的结论。</p>
+    <div class="hero-actions">
+      <a href="#" class="btn btn-primary">免费试用 14 天 →</a>
+      <a href="#" class="btn btn-ghost">预约演示</a>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div class="hero-card">
+      <div class="bento-label">本周营收</div>
+      <div class="bento-value">¥128,450<span>+12.4%</span></div>
+      <div class="bento-chart" style="margin-top:20px">
+        <div class="bar" style="height:30%"></div>
+        <div class="bar" style="height:50%"></div>
+        <div class="bar" style="height:70%"></div>
+        <div class="bar" style="height:45%"></div>
+        <div class="bar" style="height:90%"></div>
+        <div class="bar" style="height:55%"></div>
+        <div class="bar" style="height:60%"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════ Bento Grid 功能展示 ═══════════ -->
+<section class="section-features" data-design-token="features-section">
+  <h2>你需要的，我们都想到了</h2>
+  <p>不是功能的堆砌，是店长实际工作流的数字化</p>
+
+  <div class="bento-grid">
+    <!-- 主功能卡 2x2 -->
+    <div class="bento-card bento-lg">
+      <div>
+        <div class="bento-icon bento-icon-primary">📊</div>
+        <h3 style="margin-top:16px">智能预警</h3>
+        <p style="color:var(--text-secondary);margin-top:8px;font-size:0.938rem">库存告急、销售异常、损耗超标时，自动推送到企业微信，不让你错过任何异常。</p>
+      </div>
+      <div style="display:flex;gap:24px;margin-top:16px">
+        <div>
+          <div class="bento-label">本月预警</div>
+          <div class="bento-value" style="font-size:1.563rem">23<span style="color:var(--color-accent-dim);font-size:0.75rem">条</span></div>
+        </div>
+        <div>
+          <div class="bento-label">处理率</div>
+          <div class="bento-value" style="font-size:1.563rem">91%</div>
+        </div>
+        <div>
+          <div class="bento-label">平均响应</div>
+          <div class="bento-value" style="font-size:1.563rem">14<span style="color:var(--text-muted);font-size:0.75rem">分钟</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 竖卡 1x2 -->
+    <div class="bento-card bento-tall">
+      <div>
+        <div class="bento-icon bento-icon-accent">💬</div>
+        <h3 style="margin-top:16px;font-size:1.25rem">对话查询</h3>
+        <p style="color:var(--text-secondary);margin-top:8px;font-size:0.875rem">像问副店长一样问数据。支持自然语言，问了就有答案。</p>
+      </div>
+      <div style="background:var(--bg-elevated);border-radius:12px;padding:16px;margin-top:12px">
+        <p style="font-size:0.813rem;color:var(--text-muted);margin-bottom:8px">💬 最近对话</p>
+        <p style="font-size:0.813rem;color:var(--text-secondary)">"上周火锅锅底的报废率是多少？"</p>
+        <p style="font-size:0.75rem;color:var(--color-accent-dim);margin-top:4px">→ 4.7%，比前一周下降 0.8pp</p>
+      </div>
+    </div>
+
+    <!-- 小卡 -->
+    <div class="bento-card bento-sm">
+      <div class="bento-icon bento-icon-primary">📋</div>
+      <div style="margin-top:12px">
+        <h3 style="font-size:1rem">任务闭环</h3>
+        <p style="color:var(--text-secondary);font-size:0.813rem;margin-top:4px">一键生成采购单、发起审批</p>
+      </div>
+    </div>
+
+    <!-- 小卡 -->
+    <div class="bento-card bento-sm">
+      <div class="bento-icon bento-icon-accent">🔄</div>
+      <div style="margin-top:12px">
+        <h3 style="font-size:1rem">自动排班</h3>
+        <p style="color:var(--text-secondary);font-size:0.813rem;margin-top:4px">基于客流预测的智能排班</p>
+      </div>
+    </div>
+
+    <!-- 横卡 2x1 -->
+    <div class="bento-card bento-wide">
+      <div>
+        <h3 style="font-size:1.125rem">本周趋势</h3>
+      </div>
+      <div class="bento-chart" style="height:80px;">
+        <div class="bar" style="height:40%"></div>
+        <div class="bar" style="height:55%"></div>
+        <div class="bar" style="height:80%"></div>
+        <div class="bar" style="height:60%"></div>
+        <div class="bar" style="height:95%"></div>
+        <div class="bar" style="height:70%"></div>
+        <div class="bar" style="height:85%"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 指标卡 ═══════════ -->
+<section class="section-stats" data-design-token="stats-section">
+  <div class="stat-card">
+    <div class="stat-label">本月营收</div>
+    <div class="stat-number">¥486K</div>
+    <div class="stat-change up">↑ +8.3% vs 上月</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">客单价</div>
+    <div class="stat-number">¥127</div>
+    <div class="stat-change up">↑ +3.1% vs 上月</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">报废率</div>
+    <div class="stat-number">4.2%</div>
+    <div class="stat-change down">↓ -0.6pp vs 上月</div>
+  </div>
+</section>
+
+</body>
+</html>
+<!--
+  ═══════════════════════════════════════════════════════════════
+  📋 设计亮点清单
+
+  [1] 渐变弥散光斑 — Hero 区域使用 radial-gradient 光斑装饰，
+      而非大面积线性渐变背景
+  [2] Bento Grid 布局 — 不等宽网格 (2x2 / 2x1 / 1x2 / 1x1)
+      而非标准三列等宽卡片
+  [3] CSS Token 系统 — :root 自定义属性管理所有设计决策
+  [4] 非统一间距 — 8px / 12px / 20px / 32px / 48px / 80px
+  [5] 非统一圆角 — 8px / 12px / 16px / 20px / 9999px
+  [6] 字体配对 — Space Grotesk(h) + Inter(b) + JetBrains Mono(mono)
+  [7] hover 微交互 — 卡片上浮 + 阴影增强 + 边框变色
+  [8] 真实数据 — 所有数字标注单位和对比基准
+  [9] 响应式 — mobile / tablet / desktop 三档断点
+  [10] 无 Lorem Ipsum — 全部使用真实中文产品文案
+
+  配色使用: Learning Lab (#22) — 柔和紫罗兰 + 蒂芙尼青
+  ═══════════════════════════════════════════════════════════════
+-->

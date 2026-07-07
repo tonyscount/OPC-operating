@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "skill_name": "daily_briefing",
+  "result": {
+    "briefing": "📊 今日数据\n· 成员总数 2，昨日新增 2\n· 7 日互动率 50.0%\n\n⚠️ 需要关注\n· 暂无待处理过期文档，社群保鲜状态良好\n\n💡 建议行动\n· 昨日新增成员翻倍，建议今日主动欢迎新成员，引导其查看热门帖子或文档，提升留存\n· 互动率较高，可发起一个轻量话题（如“本周最想分享的一个观点”），鼓励全员参与\n\n🌟 一句话激励\n· 社群活力满满，每一次新增都是新可能，继续点燃互动热情吧！",
+    "data_snapshot": {
+      "members": 2,
+      "new_today": 2,
+      "engagement": 50.0,
+      "expiring_docs": 0
+    },
+    "generated_at": "2026-07-03T15:44:40.615974+00:00"
+  },
+  "error": null,
+  "took_ms": 4702,
+  "trace_id": "8c2df2d2"
+}

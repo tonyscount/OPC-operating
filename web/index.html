@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0F766E" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="OPC Platform" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <title>OPC Platform — 一人公司工业社交平台</title>
+  <script src="//at.alicdn.com/t/c/font_5204882_nxg2ivf7zc.js"></script>
+  <link rel="stylesheet" href="//at.alicdn.com/t/c/font_5204882_didho7lci1b.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: #0B0B0B; color: #F5F5F7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif; }
+    body { overflow-x: hidden; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+  </style>
+</head>
+<body><div id="root"></div><script type="module" src="/src/main.jsx"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js');
+  }
+</script></body>
+</html>

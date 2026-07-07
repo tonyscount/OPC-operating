@@ -1,0 +1,73 @@
+{
+  "step1_overview": {
+    "metric": "overview",
+    "time_range": "30d",
+    "members": 2,
+    "posts": 2,
+    "documents": 9,
+    "orders": 0,
+    "new_members_this_period": 2,
+    "detail": "社群总览: 2成员 · 2动态 · 9文档"
+  },
+  "step2_plan": {
+    "title": "飞盘初体验",
+    "brief": "周末一起玩飞盘",
+    "timeline": [
+      {
+        "phase": "活动前3天",
+        "action": "发布预告海报"
+      },
+      {
+        "phase": "活动前1天",
+        "action": "确认报名名单"
+      },
+      {
+        "phase": "活动当天14:00",
+        "action": "场地布置签到"
+      },
+      {
+        "phase": "活动当天15:00",
+        "action": "正式开始"
+      }
+    ],
+    "budget_breakdown": [
+      {
+        "item": "场地",
+        "amount": 200
+      },
+      {
+        "item": "飞盘物料",
+        "amount": 150
+      },
+      {
+        "item": "饮用水",
+        "amount": 50
+      },
+      {
+        "item": "应急药品",
+        "amount": 50
+      },
+      {
+        "item": "装饰横幅",
+        "amount": 50
+      }
+    ],
+    "task_assignment": [
+      {
+        "role": "主持人",
+        "person_count": 1,
+        "duty": "控场破冰"
+      },
+      {
+        "role": "摄影师",
+        "person_count": 1,
+        "duty": "拍照记录"
+      }
+    ],
+    "risk_notes": [
+      "雨天备选室内场地",
+      "人数不足延期"
+    ],
+    "promotion_text": "OPC首次线下飞盘活动来啦！周末一起挥洒汗水，结识新朋友。限20人，报名从速！"
+  }
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "name": "T1-活跃度",
+    "steps": "3",
+    "tools": "['data_query', 'data_query']",
+    "output": "好的，以下是社群近期的活跃度情况分析：\n\n---\n\n### 📊 社群活跃度概览（近30天）\n\n| 指标 | 数据 |\n|------|------|\n| **互动率** | **50.0%** |\n|"
+  },
+  {
+    "name": "T2-知识库",
+    "steps": "5",
+    "tools": "['search_knowledge', 'search_knowledge', 'search_knowledge', 'search_knowledge']",
+    "output": "抱歉，目前知识库系统似乎出现了一些技术问题，暂时无法正常查询到活动策划相关的历史经验文档。😅\n\n不过别担心！我可以从其他方面帮你：\n\n---\n\n### 🔍 替代方案\n\n**1️⃣ 直接查询社群数据，了"
+  },
+  {
+    "name": "T3-全链",
+    "steps": "4",
+    "tools": "['data_query', 'search_knowledge', 'search_knowledge', 'event_planner']",
+    "output": "---\n\n# 🎯 OPC 设备运维线上分享会 · 策划方案\n\n## 📊 社群现状速览\n| 指标 | 数据 |\n|------|------|\n| 当前成员数 | **2人** |\n| 近30天新增 |"
+  }
+]

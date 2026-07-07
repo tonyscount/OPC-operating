@@ -1,0 +1,83 @@
+{
+  "success": true,
+  "skill_name": "event_planner",
+  "result": {
+    "plan": {
+      "title": "飞盘初体验",
+      "brief": "周末20人飞盘局",
+      "timeline": [
+        {
+          "phase": "活动前3天",
+          "action": "发布预告海报"
+        },
+        {
+          "phase": "活动前1天",
+          "action": "确认名单+天气预报提醒"
+        },
+        {
+          "phase": "活动当天14:00",
+          "action": "场地布置签到"
+        },
+        {
+          "phase": "活动当天15:00",
+          "action": "飞盘教学+分组对抗"
+        },
+        {
+          "phase": "活动当天17:00",
+          "action": "合影+自由交流"
+        }
+      ],
+      "budget_breakdown": [
+        {
+          "item": "场地租赁",
+          "amount": 200
+        },
+        {
+          "item": "飞盘+物料",
+          "amount": 150
+        },
+        {
+          "item": "饮品补给",
+          "amount": 100
+        },
+        {
+          "item": "保险",
+          "amount": 50
+        }
+      ],
+      "task_assignment": [
+        {
+          "role": "主持人",
+          "person_count": 1,
+          "duty": "控场破冰"
+        },
+        {
+          "role": "摄影师",
+          "person_count": 1,
+          "duty": "拍照记录"
+        },
+        {
+          "role": "后勤",
+          "person_count": 1,
+          "duty": "物料管理+签到"
+        }
+      ],
+      "risk_notes": [
+        "雨天备选室内场地",
+        "人数不足延期或转为聚餐",
+        "受伤应急处理"
+      ],
+      "promotion_text": "【OPC飞盘局】周末一起飞！新手友好，装备全包，仅20席。快来加入我们，解锁快乐多巴胺！名额有限，私信报名～"
+    },
+    "data_insights": {
+      "members": 2,
+      "engagement": 50.0,
+      "new_members_30d": 2
+    },
+    "history_reference": "这是该类型首次活动，无往期参考",
+    "generated_at": "2026-07-03T14:56:33.232752+00:00"
+  },
+  "error": null,
+  "took_ms": 6397,
+  "trace_id": "a37b546b"
+}

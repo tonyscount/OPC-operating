@@ -1,0 +1,55 @@
+# Node
+node_modules/
+.npm/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.egg
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+postgres_data/
+redis_data/
+
+# Flutter
+.dart_tool/
+.packages
+build/
+*.iml
+.gradle/
+.idea/
+pubspec.lock
+
+# Logs
+logs/
+*.log
+
+# Test
+.coverage
+htmlcov/
+.pytest_cache/
+lenny-skills-main/
+pgvector-src/
+ppt-master-main/
+headroom-main/

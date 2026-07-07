@@ -1,0 +1,104 @@
+openapi: "3.1.0"
+info:
+  title: OPC Platform API
+  version: "0.1.0"
+  description: OPC 人员社交、管理、运营、交易平台 API
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: 本地开发
+
+# ========== 认证方案 ==========
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  # ========== 通用响应 ==========
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            request_id: { type: string }
+
+    PaginatedResponse:
+      type: object
+      properties:
+        items: { type: array, items: {} }
+        total: { type: integer }
+        page: { type: integer }
+        page_size: { type: integer }
+        has_more: { type: boolean }
+
+# ========== API 路径 ==========
+paths:
+  # ---- 认证 ----
+  /auth/login:
+    post:
+      tags: [认证]
+      summary: 用户登录
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_slug, username, password]
+              properties:
+                tenant_slug: { type: string }
+                username: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  refresh_token: { type: string }
+                  token_type: { type: string }
+                  expires_in: { type: integer }
+
+  /auth/register:
+    post:
+      tags: [认证]
+      summary: 注册新用户
+
+  /auth/me:
+    get:
+      tags: [认证]
+      summary: 当前用户信息
+      security: [{ bearerAuth: [] }]
+
+  /auth/logout:
+    post:
+      tags: [认证]
+      summary: 登出
+      security: [{ bearerAuth: [] }]
+
+  # ---- 健康检查 ----
+  /health:
+    get:
+      tags: [系统]
+      summary: 健康检查
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  version: { type: string }
