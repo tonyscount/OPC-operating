@@ -34,8 +34,79 @@ STRING_DATE_COLS = [
 
 
 def upgrade():
-    # ---- 1. conversation_participants 补 tenant_id ----
-    # 检查列是否已存在 (幂等)
+    # ---- 0. 自愈：确保 4 张通知/会话表存在 (防止 002 因 RLS 回滚导致漏建) ----
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS conversations (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            title VARCHAR(200),
+            conversation_type VARCHAR(20) DEFAULT 'private',
+            last_message TEXT,
+            last_message_at TIMESTAMP WITH TIME ZONE,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            is_deleted BOOLEAN NOT NULL DEFAULT false,
+            deleted_at TIMESTAMP WITH TIME ZONE
+        )
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_conversations_tenant ON conversations (tenant_id)")
+
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS conversation_participants (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            unread_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            is_deleted BOOLEAN NOT NULL DEFAULT false,
+            deleted_at TIMESTAMP WITH TIME ZONE
+        )
+    """)
+
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            content TEXT NOT NULL,
+            message_type VARCHAR(20) DEFAULT 'text',
+            is_read BOOLEAN DEFAULT false,
+            read_at TIMESTAMP WITH TIME ZONE,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            is_deleted BOOLEAN NOT NULL DEFAULT false,
+            deleted_at TIMESTAMP WITH TIME ZONE
+        )
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_messages_tenant ON messages (tenant_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_messages_conversation ON messages (conversation_id)")
+
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS notifications (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            recipient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            sender_id UUID REFERENCES users(id) ON DELETE SET NULL,
+            title VARCHAR(500) NOT NULL,
+            body TEXT NOT NULL,
+            notification_type VARCHAR(50) DEFAULT 'system',
+            urgency VARCHAR(20) DEFAULT 'normal',
+            is_read BOOLEAN DEFAULT false,
+            read_at TIMESTAMP WITH TIME ZONE,
+            action_url VARCHAR(500),
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            is_deleted BOOLEAN NOT NULL DEFAULT false,
+            deleted_at TIMESTAMP WITH TIME ZONE
+        )
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_notifications_tenant ON notifications (tenant_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_notifications_recipient ON notifications (recipient_id)")
+
+    # ---- 1. conversation_participants 补 tenant_id (幂等，新表已包含则跳过) ----
     result = op.get_bind().execute(sa.text(
         "SELECT EXISTS(SELECT 1 FROM information_schema.columns "
         "WHERE table_name='conversation_participants' AND column_name='tenant_id')"
@@ -44,7 +115,6 @@ def upgrade():
         op.add_column("conversation_participants",
             sa.Column("tenant_id", postgresql.UUID(as_uuid=True),
                       sa.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True))
-        # 从关联的 conversations 回填 tenant_id
         op.execute("""
             UPDATE conversation_participants cp
             SET tenant_id = c.tenant_id
@@ -72,7 +142,6 @@ def upgrade():
 
     # ---- 2. String → DateTime 类型迁移 ----
     for table, col in STRING_DATE_COLS:
-        # 先检查列类型，只对 varchar/text 列做转换 (幂等)
         col_info = op.get_bind().execute(sa.text(
             f"SELECT data_type FROM information_schema.columns "
             f"WHERE table_name='{table}' AND column_name='{col}'"
@@ -98,13 +167,9 @@ def upgrade():
             f"END $$"
         )
 
-    # ---- 4. conversation_participants 补索引 (幂等，002 已建则跳过) ----
-    op.execute("""
-        CREATE INDEX IF NOT EXISTS ix_cp_conversation_id ON conversation_participants (conversation_id)
-    """)
-    op.execute("""
-        CREATE INDEX IF NOT EXISTS ix_cp_tenant_id ON conversation_participants (tenant_id)
-    """)
+    # ---- 4. conversation_participants 补索引 (幂等) ----
+    op.execute("CREATE INDEX IF NOT EXISTS ix_cp_conversation_id ON conversation_participants (conversation_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_cp_tenant_id ON conversation_participants (tenant_id)")
 
 
 def downgrade():
