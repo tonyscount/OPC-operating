@@ -295,6 +295,78 @@ def upgrade() -> None:
     )
 
     # ============================================================
+    # 通知 & 会话 (Phase 3 — models/notification.py)
+    # ============================================================
+    op.create_table(
+        "conversations",
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column("tenant_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("title", sa.String(200), nullable=True),
+        sa.Column("conversation_type", sa.String(20), default="private"),
+        sa.Column("last_message", sa.Text, nullable=True),
+        sa.Column("last_message_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("is_deleted", sa.Boolean, default=False, nullable=False),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
+    )
+    op.create_index("ix_conversations_tenant", "conversations", ["tenant_id"])
+
+    op.create_table(
+        "conversation_participants",
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column("tenant_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("conversation_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("unread_count", sa.Integer, default=0),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("is_deleted", sa.Boolean, default=False, nullable=False),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
+    )
+    op.create_index("ix_cp_conversation_id", "conversation_participants", ["conversation_id"])
+    op.create_index("ix_cp_tenant_id", "conversation_participants", ["tenant_id"])
+
+    op.create_table(
+        "messages",
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column("tenant_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("conversation_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("sender_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("content", sa.Text, nullable=False),
+        sa.Column("message_type", sa.String(20), default="text"),
+        sa.Column("is_read", sa.Boolean, default=False),
+        sa.Column("read_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("is_deleted", sa.Boolean, default=False, nullable=False),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
+    )
+    op.create_index("ix_messages_tenant", "messages", ["tenant_id"])
+    op.create_index("ix_messages_conversation", "messages", ["conversation_id"])
+
+    op.create_table(
+        "notifications",
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column("tenant_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("recipient_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("sender_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
+        sa.Column("title", sa.String(500), nullable=False),
+        sa.Column("body", sa.Text, nullable=False),
+        sa.Column("notification_type", sa.String(50), default="system"),
+        sa.Column("urgency", sa.String(20), default="normal"),
+        sa.Column("is_read", sa.Boolean, default=False),
+        sa.Column("read_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("action_url", sa.String(500), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("is_deleted", sa.Boolean, default=False, nullable=False),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
+    )
+    op.create_index("ix_notifications_tenant", "notifications", ["tenant_id"])
+    op.create_index("ix_notifications_recipient", "notifications", ["recipient_id"])
+
+    # ============================================================
     # RLS 全覆盖
     # ============================================================
     for table in RLS_TABLES:
@@ -319,6 +391,10 @@ def downgrade() -> None:
     for table in INDEX_TABLES:
         op.drop_index(f"ix_{table}_tenant", table_name=table)
 
+    op.drop_table("notifications")
+    op.drop_table("messages")
+    op.drop_table("conversation_participants")
+    op.drop_table("conversations")
     op.drop_table("trade_order_items")
     op.drop_table("trade_orders")
     op.drop_table("trade_products")

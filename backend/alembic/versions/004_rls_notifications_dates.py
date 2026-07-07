@@ -98,9 +98,13 @@ def upgrade():
             f"END $$"
         )
 
-    # ---- 4. conversation_participants 补索引 ----
-    op.create_index("ix_cp_conversation_id", "conversation_participants", ["conversation_id"])
-    op.create_index("ix_cp_tenant_id", "conversation_participants", ["tenant_id"])
+    # ---- 4. conversation_participants 补索引 (幂等，002 已建则跳过) ----
+    op.execute("""
+        CREATE INDEX IF NOT EXISTS ix_cp_conversation_id ON conversation_participants (conversation_id)
+    """)
+    op.execute("""
+        CREATE INDEX IF NOT EXISTS ix_cp_tenant_id ON conversation_participants (tenant_id)
+    """)
 
 
 def downgrade():
@@ -108,9 +112,9 @@ def downgrade():
     for t in MISSING_RLS_TABLES:
         op.execute(f"DROP POLICY IF EXISTS tenant_isolation_{t} ON {t}")
 
-    # 移除 cp 索引
-    op.drop_index("ix_cp_tenant_id", table_name="conversation_participants")
-    op.drop_index("ix_cp_conversation_id", table_name="conversation_participants")
+    # 移除 cp 索引 (幂等)
+    op.execute("DROP INDEX IF EXISTS ix_cp_tenant_id")
+    op.execute("DROP INDEX IF EXISTS ix_cp_conversation_id")
 
     # 移除 cp 软删除字段
     op.drop_column("conversation_participants", "deleted_at")
