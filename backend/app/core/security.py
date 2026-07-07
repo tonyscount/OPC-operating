@@ -30,6 +30,7 @@ class TokenPayload(BaseModel):
     org_id: str | None = None
     roles: list[str] = []
     exp: int
+    type: str = "access"  # access | refresh
 
 
 # ========== JWT 工具 ==========
@@ -53,10 +54,11 @@ def create_access_token(
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
-def create_refresh_token(user_id: str | UUID) -> str:
+def create_refresh_token(user_id: str | UUID, tenant_id: str | UUID) -> str:
     """生成刷新 Token (长期)"""
     payload = {
         "sub": str(user_id),
+        "tenant_id": str(tenant_id),
         "exp": datetime.now(timezone.utc)
         + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS),
         "iat": datetime.now(timezone.utc),

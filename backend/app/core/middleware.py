@@ -54,6 +54,12 @@ class TenantMiddleware(BaseHTTPMiddleware):
             request.state.cross_tenant = True
             # 跨租户操作需要超级管理员权限，在业务层校验
 
+        # 初始化速率限制状态 (兼容 slowapi 0.1.x + Starlette 0.41+)
+        try:
+            _ = request.state.view_rate_limit
+        except AttributeError:
+            request.state._state["view_rate_limit"] = None
+
         response = await call_next(request)
 
         # 响应头附加请求 ID，方便前端排查

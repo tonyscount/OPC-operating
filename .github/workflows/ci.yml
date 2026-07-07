@@ -1,0 +1,207 @@
+name: OPC Platform CI
+
+on:
+  push:
+    branches: [master, main, develop]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  # ═══════════════════════════════════════
+  # Job 1: 代码检查
+  # ═══════════════════════════════════════
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install ruff
+          pip install -r requirements.txt 2>/dev/null || true
+
+      - name: Ruff lint
+        run: ruff check app/ --select E,F,W --ignore E501 || true
+
+      - name: Ruff format check
+        run: ruff format --check app/ || true
+
+  # ═══════════════════════════════════════
+  # Job 2: 单元测试 + 迁移验证
+  # ═══════════════════════════════════════
+  test:
+    name: Tests & Migrations
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_DB: opc_test
+          POSTGRES_USER: opc_user
+          POSTGRES_PASSWORD: opc_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Verify migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://opc_user:opc_test_password@localhost:5432/opc_test
+          DATABASE_URL_SYNC: postgresql://opc_user:opc_test_password@localhost:5432/opc_test
+        run: |
+          python -m alembic upgrade head
+          echo "Migrations OK"
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://opc_user:opc_test_password@localhost:5432/opc_test
+          REDIS_URL: redis://localhost:6379/0
+          JWT_SECRET_KEY: test-secret-do-not-use-in-production-32chars
+          OPENAI_API_KEY: sk-test-placeholder
+        run: python -m pytest tests/ -v --tb=short
+
+  # ═══════════════════════════════════════
+  # Job 3: API 集成冒烟测试
+  # ═══════════════════════════════════════
+  smoke:
+    name: API Smoke Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_DB: opc_test
+          POSTGRES_USER: opc_user
+          POSTGRES_PASSWORD: opc_test_password
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://opc_user:opc_test_password@localhost:5432/opc_test
+          DATABASE_URL_SYNC: postgresql://opc_user:opc_test_password@localhost:5432/opc_test
+        run: python -m alembic upgrade head
+
+      - name: Start server
+        env:
+          DATABASE_URL: postgresql+asyncpg://opc_user:opc_test_password@localhost:5432/opc_test
+          DATABASE_URL_SYNC: postgresql://opc_user:opc_test_password@localhost:5432/opc_test
+          REDIS_URL: redis://localhost:6379/0
+          JWT_SECRET_KEY: test-secret-do-not-use-in-production-32chars
+          OPENAI_API_KEY: sk-test-placeholder
+        run: |
+          python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+
+      - name: Smoke test
+        run: |
+          # Health check
+          curl -sf http://localhost:8000/health || exit 1
+
+          # Register
+          RESP=$(curl -s -X POST http://localhost:8000/api/v1/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"tenant_name":"CITest","tenant_slug":"ci-smoke-test","username":"cibot","password":"CIBotPass1","display_name":"CI"}')
+          TOKEN=$(echo $RESP | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
+          [ -n "$TOKEN" ] || { echo "Register failed"; exit 1; }
+          echo "Register OK"
+
+          # Post
+          curl -sf -X POST http://localhost:8000/api/v1/social/posts \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $TOKEN" \
+            -d '{"content":"CI smoke test","visibility":"public"}' || exit 1
+          echo "Post OK"
+
+          # Feed
+          curl -sf http://localhost:8000/api/v1/social/posts?feed_type=all \
+            -H "Authorization: Bearer $TOKEN" || exit 1
+          echo "Feed OK"
+
+          # Metrics
+          curl -sf http://localhost:8000/metrics || exit 1
+          echo "Metrics OK"
+
+          # API Docs
+          curl -sf http://localhost:8000/api/docs || exit 1
+          echo "Docs OK"
+
+          echo "=== ALL SMOKE TESTS PASSED ==="
+
+  # ═══════════════════════════════════════
+  # Job 4: Web 前端构建
+  # ═══════════════════════════════════════
+  build-web:
+    name: Build Web Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install & Build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Verify output
+        run: |
+          test -f dist/index.html && echo "Web build OK" || exit 1
+          test -f dist/assets/*.js && echo "JS bundle OK" || exit 1

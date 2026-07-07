@@ -10,7 +10,7 @@ GET    /agent/executions/{id}  — 执行详情
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
 from app.core.database import get_db
 from app.core.rate_limit import RATE_AGENT_RUN, limiter
@@ -144,6 +144,7 @@ async def register_agent(
 @router.post("/run")
 @limiter.limit(RATE_AGENT_RUN)
 async def run_agent(
+    request: Request,
     req: AgentExecutionRequest,
     _: bool = Depends(require_agent_exec),
     current_user: TokenPayload = Depends(get_current_user),

@@ -1,0 +1,46 @@
+Count,Message,Traceback,Nodes
+44,"In order to use a with-block for requests, you must also pass catch_response=True","  File ""C:\Users\86153\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\locust\user\task.py"", line 363, in run
+    self.execute_next_task()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File ""C:\Users\86153\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\locust\user\task.py"", line 396, in execute_next_task
+    self.execute_task(self._task_queue.popleft())
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""C:\Users\86153\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\locust\user\task.py"", line 513, in execute_task
+    task(self.user)
+    ~~~~^^^^^^^^^^^
+  File ""E:\git\OPC-operating\backend\tests\load\locustfile.py"", line 118, in browse_feed
+    with self.client.get(
+         ~~~~~~~~~~~~~~~^
+        f""/api/v1/social/posts?feed_type={feed_type}&page=1&page_size=10"",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        headers=self._auth(),
+        ^^^^^^^^^^^^^^^^^^^^^
+        name=""Feed"",
+        ^^^^^^^^^^^^
+    ) as r:
+    ^
+  File ""C:\Users\86153\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\locust\clients.py"", line 396, in __enter__
+    raise LocustError(""In order to use a with-block for requests, you must also pass catch_response=True"")
+",local
+21,"In order to use a with-block for requests, you must also pass catch_response=True","  File ""C:\Users\86153\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\locust\user\task.py"", line 363, in run
+    self.execute_next_task()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File ""C:\Users\86153\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\locust\user\task.py"", line 396, in execute_next_task
+    self.execute_task(self._task_queue.popleft())
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""C:\Users\86153\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\locust\user\task.py"", line 513, in execute_task
+    task(self.user)
+    ~~~~^^^^^^^^^^^
+  File ""E:\git\OPC-operating\backend\tests\load\locustfile.py"", line 175, in create_post
+    with self.client.post(
+         ~~~~~~~~~~~~~~~~^
+        ""/api/v1/social/posts"",
+        ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        name=""Create Post"",
+        ^^^^^^^^^^^^^^^^^^^
+    ) as r:
+    ^
+  File ""C:\Users\86153\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\locust\clients.py"", line 396, in __enter__
+    raise LocustError(""In order to use a with-block for requests, you must also pass catch_response=True"")
+",local

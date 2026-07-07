@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
 import { isLoggedIn, clearToken, api } from './api/client'
 import LoginPage from './pages/LoginPage'
 import KnowledgePage from './pages/KnowledgePage'
@@ -15,22 +16,45 @@ import NotificationBell from './components/NotificationBell'
 import ChatWidget from './components/ChatWidget'
 
 const TABS = [
-  { key: 'knowledge', label: '知识库' },
-  { key: 'social', label: '社群' },
-  { key: 'skill', label: 'Skills' },
-  { key: 'agent', label: 'Agent' },
-  { key: 'devices', label: '设备' },
-  { key: 'data', label: '数据' },
-  { key: 'ops', label: '运营' },
+  { key: 'knowledge', label: '知识库', path: '/knowledge' },
+  { key: 'social', label: '社群', path: '/social' },
+  { key: 'skill', label: 'Skills', path: '/skills' },
+  { key: 'agent', label: 'Agent', path: '/agent' },
+  { key: 'devices', label: '设备', path: '/devices' },
+  { key: 'data', label: '数据', path: '/data' },
+  { key: 'ops', label: '运营', path: '/ops' },
 ]
 
+const MOBILE_TABS = [
+  { key: 'social', icon: '💬', label: '社群', path: '/social' },
+  { key: 'knowledge', icon: '📚', label: '知识库', path: '/knowledge' },
+  { key: 'agent', icon: '🤖', label: 'Agent', path: '/agent' },
+  { key: 'profile', icon: '👤', label: '我的', path: '/profile' },
+]
+
+function useCurrentTab() {
+  const location = useLocation()
+  const all = [...TABS, ...MOBILE_TABS, { path: '/profile' }]
+  const match = all.find(t => location.pathname.startsWith(t.path))
+  return match ? match.key : 'knowledge'
+}
+
 export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
+  )
+}
+
+function AppContent() {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn())
-  const [page, setPage] = useState('knowledge')
   const [user, setUser] = useState(null)
   const [width, setWidth] = useState(window.innerWidth)
   const [showSettings, setShowSettings] = useState(false)
   const isMobile = width < 768
+  const currentTab = useCurrentTab()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const onResize = () => setWidth(window.innerWidth)
@@ -48,7 +72,7 @@ export default function App() {
       {/* Header */}
       {isMobile ? (
         <header style={{ background: '#fff', borderBottom: '1px solid var(--border)', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100 }}>
-          <span style={{ fontWeight: 700, fontSize: 17, color: 'var(--text)' }}>OPC</span>
+          <Link to="/" style={{ fontWeight: 700, fontSize: 17, color: 'var(--text)', textDecoration: 'none' }}>OPC</Link>
           <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             <ChatWidget />
             <NotificationBell />
@@ -61,7 +85,7 @@ export default function App() {
           padding: '0 28px', display: 'flex', alignItems: 'center', gap: 2,
           position: 'sticky', top: 0, zIndex: 100,
         }}>
-          <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', letterSpacing: '-.2px', marginRight: 28 }}>OPC Platform</span>
+          <Link to="/" style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', letterSpacing: '-.2px', marginRight: 28, textDecoration: 'none' }}>OPC Platform</Link>
           <div style={{ position: 'relative', flex: 1, maxWidth: 240 }}>
             <input placeholder="🔍 搜索帖子、文档、用户..." className="input" style={{ padding: '6px 10px 6px 30px', fontSize: 12, background: 'var(--bg)' }}
               onKeyDown={async (e) => {
@@ -69,18 +93,19 @@ export default function App() {
                   const q = e.target.value.trim()
                   const r = await fetch('/api/v1/search', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('opc_token')}` }, body: JSON.stringify({ query: q, page: 1, page_size: 10 }) })
                   const d = await r.json(); const items = d.items || []
+                  navigate(`/search?q=${encodeURIComponent(q)}`)
                   alert(items.length === 0 ? '未找到结果' : `找到 ${d.total} 条:\n${items.map(i => `· [${i.source_type}] ${(i.title||'').slice(0,50)}`).join('\n')}`)
                 }
               }} />
           </div>
           {TABS.map(t => (
-            <button key={t.key} onClick={() => setPage(t.key)} style={{
-              background: page === t.key ? 'var(--accent-subtle)' : 'transparent',
-              color: page === t.key ? 'var(--accent)' : 'var(--text-2)',
+            <Link key={t.key} to={t.path} style={{
+              background: currentTab === t.key ? 'var(--accent-subtle)' : 'transparent',
+              color: currentTab === t.key ? 'var(--accent)' : 'var(--text-2)',
               border: 'none', padding: '6px 14px', borderRadius: 6, cursor: 'pointer',
-              fontSize: 13, fontWeight: page === t.key ? 600 : 500, fontFamily: 'var(--font)',
-              transition: 'all .15s',
-            }}>{t.label}</button>
+              fontSize: 13, fontWeight: currentTab === t.key ? 600 : 500, fontFamily: 'var(--font)',
+              transition: 'all .15s', textDecoration: 'none',
+            }}>{t.label}</Link>
           ))}
           <div style={{ flex: 1 }} />
           <span style={{ color: 'var(--border)', margin: '0 2px' }}>|</span>
@@ -91,14 +116,18 @@ export default function App() {
       )}
 
       <main style={{ padding: isMobile ? 16 : 24 }}>
-        {page === 'knowledge' && <KnowledgePage isMobile={isMobile} />}
-        {page === 'social' && <SocialPage isMobile={isMobile} />}
-        {page === 'skill' && <SkillPage isMobile={isMobile} />}
-        {page === 'agent' && <AgentPage isMobile={isMobile} />}
-        {page === 'devices' && <DevicesPage />}
-        {page === 'data' && <DataPage />}
-        {page === 'profile' && <MinePage user={user} onSettings={() => setShowSettings(true)} />}
-        {page === 'ops' && <OpsPage />}
+        <Routes>
+          <Route path="/" element={<KnowledgePage isMobile={isMobile} />} />
+          <Route path="/knowledge" element={<KnowledgePage isMobile={isMobile} />} />
+          <Route path="/social" element={<SocialPage isMobile={isMobile} />} />
+          <Route path="/skills" element={<SkillPage isMobile={isMobile} />} />
+          <Route path="/agent" element={<AgentPage isMobile={isMobile} />} />
+          <Route path="/devices" element={<DevicesPage />} />
+          <Route path="/data" element={<DataPage />} />
+          <Route path="/ops" element={<OpsPage />} />
+          <Route path="/profile" element={<MinePage user={user} onSettings={() => setShowSettings(true)} />} />
+          <Route path="*" element={<KnowledgePage isMobile={isMobile} />} />
+        </Routes>
       </main>
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
@@ -109,21 +138,17 @@ export default function App() {
           borderTop: '1px solid var(--border)', display: 'flex', zIndex: 200,
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}>
-          {[
-            { key: 'social', icon: '💬', label: '社群' },
-            { key: 'knowledge', icon: '📚', label: '知识库' },
-            { key: 'agent', icon: '🤖', label: 'Agent' },
-            { key: 'profile', icon: '👤', label: '我的' },
-          ].map(t => (
-            <button key={t.key} onClick={() => setPage(t.key)} style={{
+          {MOBILE_TABS.map(t => (
+            <Link key={t.key} to={t.path} style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
               padding: '8px 0 6px', border: 'none', background: 'transparent',
-              color: page === t.key ? 'var(--accent)' : 'var(--text-3)',
-              cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 10, fontWeight: page === t.key ? 600 : 400,
+              color: currentTab === t.key ? 'var(--accent)' : 'var(--text-3)',
+              cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 10, fontWeight: currentTab === t.key ? 600 : 400,
+              textDecoration: 'none',
             }}>
               <span style={{ fontSize: 20 }}>{t.icon}</span>
               <span>{t.label}</span>
-            </button>
+            </Link>
           ))}
         </nav>
       )}
@@ -133,12 +158,13 @@ export default function App() {
           display: 'flex', gap: 2, padding: '5px 8px', borderRadius: 16, zIndex: 200,
         }}>
           {TABS.map(t => (
-            <button key={t.key} onClick={() => setPage(t.key)} style={{
-              background: page === t.key ? 'var(--accent-subtle)' : 'transparent',
-              color: page === t.key ? 'var(--accent)' : 'var(--text-2)',
+            <Link key={t.key} to={t.path} style={{
+              background: currentTab === t.key ? 'var(--accent-subtle)' : 'transparent',
+              color: currentTab === t.key ? 'var(--accent)' : 'var(--text-2)',
               border: 'none', padding: '6px 12px', borderRadius: 12, cursor: 'pointer',
-              fontSize: 12, fontWeight: page === t.key ? 600 : 500, fontFamily: 'var(--font)',
-            }}>{t.icon} {t.label}</button>
+              fontSize: 12, fontWeight: currentTab === t.key ? 600 : 500, fontFamily: 'var(--font)',
+              textDecoration: 'none',
+            }}>{t.icon} {t.label}</Link>
           ))}
         </nav>
       )}

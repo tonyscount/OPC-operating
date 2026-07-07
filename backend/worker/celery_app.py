@@ -19,6 +19,8 @@ celery_app = Celery(
         "worker.tasks.health_check",
         "worker.tasks.freshness_check",
         "worker.tasks.daily_briefing",
+        "worker.tasks.sync_counters",
+        "worker.tasks.db_backup",
     ],
 )
 
@@ -76,6 +78,18 @@ celery_app.conf.beat_schedule = {
     "daily-briefing": {
         "task": "worker.tasks.daily_briefing.run",
         "schedule": crontab(minute="10", hour="8"),
+        "options": {"queue": "periodic"},
+    },
+    # Redis 计数器 → DB 同步 — 每 30 秒
+    "sync-counters": {
+        "task": "sync_counters_to_db",
+        "schedule": 30.0,
+        "options": {"queue": "periodic"},
+    },
+    # 数据库备份 — 每天凌晨 3:00
+    "db-backup-daily": {
+        "task": "db_backup_daily",
+        "schedule": crontab(minute="0", hour="3"),
         "options": {"queue": "periodic"},
     },
 }

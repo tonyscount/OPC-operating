@@ -17,6 +17,7 @@ from app.core.rate_limit import limiter
 
 from app.config import settings
 from app.core.exceptions import register_exception_handlers
+from app.core.metrics import MetricsMiddleware, metrics_endpoint
 from app.core.middleware import RequestLoggingMiddleware, TenantMiddleware
 
 
@@ -61,7 +62,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e: logger.warning(f"send_notification: {e}")
     try: import skills.read_user_profile  # noqa: F401
     except Exception as e: logger.warning(f"read_user_profile: {e}")
+    try: import skills.ppt_master  # noqa: F401
+    except Exception as e: logger.warning(f"ppt_master: {e}")
     logger.info(f"   Skills loaded: {skill_registry.count}")
+
+    # 启动 WebSocket Redis Pub/Sub (跨实例消息路由)
+    from app.modules.notification.ws import manager as ws_manager
+    await ws_manager.start()
 
     # 加载 Lenny Skills (Product Management 知识库)
     try:
@@ -74,9 +81,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     # 关闭时: 清理资源
+    from app.modules.notification.ws import manager as ws_manager
+    await ws_manager.stop()
     from app.core.database import engine
     await engine.dispose()
-    logger.info("👋 OPC Platform shut down")
+    logger.info("OPC Platform shut down")
 
 
 
@@ -104,6 +113,9 @@ def create_app() -> FastAPI:
     # ---- 租户中间件 (最先执行) ----
     app.add_middleware(TenantMiddleware)
 
+    # ---- 可观测性 (最外层, 采集所有请求) ----
+    app.add_middleware(MetricsMiddleware)
+
     # ---- 请求日志 ----
     app.add_middleware(RequestLoggingMiddleware)
 
@@ -121,6 +133,11 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health():
         return {"status": "ok", "version": settings.APP_VERSION}
+
+    # ---- Prometheus 指标 ----
+    @app.get("/metrics")
+    async def metrics():
+        return await metrics_endpoint()
 
     # ---- 前端静态文件 (生产模式) ----
     from pathlib import Path

@@ -13,7 +13,7 @@ POST   /oa/reject/{step_id}    — 审批拒绝
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
 from app.core.database import get_db
 from app.core.exceptions import ForbiddenException, NotFoundException
@@ -69,6 +69,7 @@ async def list_templates(
 @router.post("/apply", status_code=status.HTTP_201_CREATED)
 @limiter.limit(RATE_OA_APPLY)
 async def submit_approval(
+    request: Request,
     template_id: uuid.UUID,
     title: str,
     form_data: dict | None = None,
@@ -189,6 +190,7 @@ async def _verify_approver(step, current_user: TokenPayload, db) -> bool:
 @router.post("/approve/{step_id}")
 @limiter.limit(RATE_OA_APPROVE)
 async def approve_step(
+    request: Request,
     step_id: uuid.UUID,
     comment: str | None = None,
     current_user: TokenPayload = Depends(get_current_user),
@@ -222,6 +224,7 @@ async def approve_step(
 @router.post("/reject/{step_id}")
 @limiter.limit(RATE_OA_APPROVE)
 async def reject_step(
+    request: Request,
     step_id: uuid.UUID,
     comment: str | None = None,
     current_user: TokenPayload = Depends(get_current_user),

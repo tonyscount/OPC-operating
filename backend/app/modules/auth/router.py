@@ -98,7 +98,7 @@ async def _auto_welcome_new_member(tenant_slug: str, username: str, display_name
 
 @router.post("/refresh", response_model=TokenResponse)
 @limiter.limit(RATE_AUTH_REFRESH)
-async def refresh_endpoint(req: RefreshRequest, db=Depends(get_db)):
+async def refresh_endpoint(req: RefreshRequest, request: Request, db=Depends(get_db)):
     """用 Refresh Token 换取新的 Token 对 (旧 Token 即时吊销)"""
     result = await refresh_access_token(db, req.refresh_token)
     return result

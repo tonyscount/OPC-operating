@@ -11,7 +11,7 @@ GET  /users/{id}/business-card — 工程师名片
 import uuid
 from math import cos, radians
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, select, or_
 
 from app.core.database import get_db
@@ -133,6 +133,7 @@ async def discover_circles(
 @router.post("/greet", status_code=201)
 @limiter.limit(RATE_SOCIAL_GREET)
 async def greet_user(
+    request: Request,
     to_user_id: uuid.UUID, message: str | None = None,
     source: str = "lbs", lat: float | None = None, lng: float | None = None,
     current_user: TokenPayload = Depends(get_current_user), db=Depends(get_db),
@@ -151,6 +152,7 @@ async def greet_user(
 @router.get("/feed")
 @limiter.limit(RATE_SOCIAL_FEED)
 async def hybrid_feed(
+    request: Request,
     page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=50),
     current_user: TokenPayload = Depends(get_current_user), db=Depends(get_db),
 ):

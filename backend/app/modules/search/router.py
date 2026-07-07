@@ -11,6 +11,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query, Request, status
 
 from app.config import settings
+from app.core.cache import cache_get, cache_set, search_key, TTL_SEARCH
 from app.core.database import get_db
 from app.core.rate_limit import RATE_SOCIAL_SEARCH, limiter
 from app.core.security import PermissionChecker, TokenPayload, get_current_user
@@ -41,6 +42,13 @@ async def unified_search(
       - 开发环境且未配置 SEARCH_API_KEY → 自动使用 Mock 模式
       - 配置了 SEARCH_API_KEY → 调用真实搜索引擎
     """
+    # 首页搜索结果缓存 5min
+    cache_key = search_key(str(current_user.tenant_id), req.query)
+    if req.page == 1:
+        cached = await cache_get(cache_key)
+        if cached:
+            return SearchResponse(**cached) if isinstance(cached, dict) else cached
+
     result = await search(
         db,
         tenant_id=uuid.UUID(current_user.tenant_id),
@@ -51,7 +59,7 @@ async def unified_search(
         sort=req.sort,
     )
 
-    return SearchResponse(
+    response = SearchResponse(
         items=result["items"],
         total=result["total"],
         page=result["page"],
@@ -61,6 +69,11 @@ async def unified_search(
         query=result["query"],
         suggested_query=result.get("suggested_query"),
     )
+    # 缓存首页搜索结果
+    if req.page == 1:
+        import asyncio
+        asyncio.create_task(cache_set(cache_key, response.model_dump(), TTL_SEARCH))
+    return response
 
 
 @router.get("/suggest")

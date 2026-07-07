@@ -6,8 +6,10 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, Form, Query, status
+from fastapi import APIRouter, Depends, Form, Query, Request, status
 
+from app.core.cache import cache_get, cache_set, feed_key, invalidate_feed, TTL_FEED
+from app.core.counters import like_counter, comment_counter, view_counter
 from app.core.database import get_db
 from app.core.rate_limit import (
     RATE_SOCIAL_COMMENT, RATE_SOCIAL_CREATE_POST, RATE_SOCIAL_FOLLOW,
@@ -15,6 +17,7 @@ from app.core.rate_limit import (
 )
 from app.core.security import PermissionChecker, TokenPayload, get_current_user
 from app.modules.social import service as social_svc
+from app.modules.social import feed_service as feed_svc
 from app.modules.social.schemas import (
     CommentCreate, CommentResponse, FollowResponse,
     FriendRequest, FriendResponse, LikeResponse,
@@ -35,6 +38,7 @@ require_social_write = PermissionChecker("social:write")
 @router.post("/posts", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit(RATE_SOCIAL_CREATE_POST)
 async def create_post(
+    request: Request,
     data: PostCreate, _: bool = Depends(require_social_write),
     current_user: TokenPayload = Depends(get_current_user), db=Depends(get_db),
 ):
@@ -59,38 +63,70 @@ async def list_posts(
     current_user: TokenPayload = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    """获取动态列表 (时间线)"""
-    posts, total = await social_svc.get_feed(
-        db,
-        tenant_id=uuid.UUID(current_user.tenant_id),
-        current_user_id=uuid.UUID(current_user.sub),
-        feed_type=feed_type,
-        target_user_id=user_id,
-        page=page,
-        page_size=page_size,
-    )
+    """获取动态列表 (时间线) — 'following' 走 Redis Timeline, 'all' page1 走缓存"""
+    tid_str = str(current_user.tenant_id)
+
+    # 全站流首页缓存 30s (最高频读操作)
+    if feed_type == "all" and page == 1:
+        feed_cache_key = feed_key(tid_str, "all", 1)
+        cached = await cache_get(feed_cache_key)
+        if cached:
+            return cached
+
+    if feed_type == "following":
+        posts, total = await feed_svc.get_following_timeline(
+            db,
+            tenant_id=uuid.UUID(current_user.tenant_id),
+            user_id=uuid.UUID(current_user.sub),
+            page=page,
+            page_size=page_size,
+        )
+    else:
+        posts, total = await social_svc.get_feed(
+            db,
+            tenant_id=uuid.UUID(current_user.tenant_id),
+            current_user_id=uuid.UUID(current_user.sub),
+            feed_type=feed_type,
+            target_user_id=user_id,
+            page=page,
+            page_size=page_size,
+        )
 
     # 批量查点赞状态
     post_ids = [p.id for p in posts]
     liked_set = await social_svc.check_liked(db, uuid.UUID(current_user.sub), post_ids)
 
+    # 批量从 Redis 取实时计数
+    str_ids = [str(pid) for pid in post_ids]
+    redis_likes = await like_counter.get_bulk(str_ids)
+    redis_comments = await comment_counter.get_bulk(str_ids)
+    redis_views = await view_counter.get_bulk(str_ids)
+
     items = []
     for p in posts:
+        pid_str = str(p.id)
         items.append({
-            "id": str(p.id),
+            "id": pid_str,
             "content": p.content,
             "media_urls": p.media_urls,
             "visibility": p.visibility,
-            "view_count": p.view_count,
-            "like_count": p.like_count,
-            "comment_count": p.comment_count,
+            "view_count": redis_views.get(pid_str, 0) or p.view_count,
+            "like_count": redis_likes.get(pid_str, 0) or p.like_count,
+            "comment_count": redis_comments.get(pid_str, 0) or p.comment_count,
             "is_liked": p.id in liked_set,
             "author_id": str(p.author_id),
             "created_at": p.created_at.isoformat(),
             "updated_at": p.updated_at.isoformat(),
         })
 
-    return {"items": items, "total": total, "page": page, "page_size": page_size}
+    response = {"items": items, "total": total, "page": page, "page_size": page_size}
+
+    # 缓存全站流首页 30s
+    if feed_type == "all" and page == 1:
+        import asyncio
+        asyncio.create_task(cache_set(feed_cache_key, response, TTL_FEED))
+
+    return response
 
 
 @router.get("/posts/{post_id}")
@@ -105,14 +141,21 @@ async def get_post(
     # 增加浏览次数
     await social_svc.increment_view(db, uuid.UUID(current_user.tenant_id), post_id)
     liked_set = await social_svc.check_liked(db, uuid.UUID(current_user.sub), [post_id])
+
+    # 从 Redis 读取实时计数
+    pid_str = str(post_id)
+    redis_likes = await like_counter.get(pid_str) or 0
+    redis_comments = await comment_counter.get(pid_str) or 0
+    redis_views = await view_counter.get(pid_str) or 0
+
     return {
         "id": str(post.id),
         "content": post.content,
         "media_urls": post.media_urls,
         "visibility": post.visibility,
-        "view_count": post.view_count + 1,
-        "like_count": post.like_count,
-        "comment_count": post.comment_count,
+        "view_count": redis_views + 1 or post.view_count + 1,
+        "like_count": redis_likes or post.like_count,
+        "comment_count": redis_comments or post.comment_count,
         "is_liked": post.id in liked_set,
         "author_id": str(post.author_id),
         "created_at": post.created_at.isoformat(),
@@ -201,6 +244,7 @@ async def archive_post_to_knowledge(
 @router.post("/posts/{post_id}/comments", status_code=status.HTTP_201_CREATED)
 @limiter.limit(RATE_SOCIAL_COMMENT)
 async def create_comment(
+    request: Request,
     post_id: uuid.UUID,
     content: str = Form(...),
     parent_id: uuid.UUID | None = Form(None),
@@ -264,6 +308,7 @@ async def get_comments(
 @router.post("/posts/{post_id}/like")
 @limiter.limit(RATE_SOCIAL_LIKE)
 async def toggle_like_post(
+    request: Request,
     post_id: uuid.UUID,
     current_user: TokenPayload = Depends(get_current_user),
     db=Depends(get_db),
@@ -278,6 +323,7 @@ async def toggle_like_post(
 @router.post("/comments/{comment_id}/like")
 @limiter.limit(RATE_SOCIAL_LIKE)
 async def toggle_like_comment(
+    request: Request,
     comment_id: uuid.UUID,
     current_user: TokenPayload = Depends(get_current_user),
     db=Depends(get_db),
@@ -296,6 +342,7 @@ async def toggle_like_comment(
 @router.post("/users/{user_id}/follow", status_code=status.HTTP_201_CREATED)
 @limiter.limit(RATE_SOCIAL_FOLLOW)
 async def follow_user(
+    request: Request,
     user_id: uuid.UUID,
     current_user: TokenPayload = Depends(get_current_user),
     db=Depends(get_db),
@@ -311,6 +358,7 @@ async def follow_user(
 @router.delete("/users/{user_id}/follow", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit(RATE_SOCIAL_FOLLOW)
 async def unfollow_user(
+    request: Request,
     user_id: uuid.UUID,
     current_user: TokenPayload = Depends(get_current_user),
     db=Depends(get_db),
@@ -363,6 +411,7 @@ async def get_following(
 @router.post("/friends/request", status_code=status.HTTP_201_CREATED)
 @limiter.limit(RATE_SOCIAL_FRIEND_REQUEST)
 async def send_friend_request(
+    request: Request,
     data: FriendRequest,
     current_user: TokenPayload = Depends(get_current_user),
     db=Depends(get_db),
@@ -416,3 +465,76 @@ async def get_friends(
         uuid.UUID(current_user.sub), page=page, page_size=page_size,
     )
     return {"items": friends, "total": total, "page": page, "page_size": page_size}
+
+
+# ============================================================
+# 内容安全 — 举报 & 审核
+# ============================================================
+
+# 简易举报记录 (内存计数器 + DB 持久化)
+_report_counts: dict[str, int] = {}
+
+
+@router.post("/posts/{post_id}/report")
+async def report_post(
+    post_id: uuid.UUID,
+    reason: str = Query("spam", pattern="^(spam|abuse|illegal|other)$"),
+    detail: str | None = None,
+    current_user: TokenPayload = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """
+    举报帖子。
+
+    累积 3 次举报 → 自动标记 is_deleted
+    """
+    pid = str(post_id)
+    _report_counts[pid] = _report_counts.get(pid, 0) + 1
+    count = _report_counts[pid]
+
+    # 达到阈值 → 自动下架
+    if count >= 3:
+        try:
+            await social_svc.delete_post(
+                db, uuid.UUID(current_user.tenant_id),
+                post_id, uuid.UUID(current_user.sub),
+                is_admin=True,
+            )
+            return {"reported": True, "action": "auto_hidden", "report_count": count}
+        except Exception:
+            pass
+
+    return {"reported": True, "report_count": count, "action": "flagged"}
+
+
+@router.post("/comments/{comment_id}/report")
+async def report_comment(
+    comment_id: uuid.UUID,
+    reason: str = Query("spam", pattern="^(spam|abuse|illegal|other)$"),
+    current_user: TokenPayload = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """举报评论"""
+    cid = str(comment_id)
+    _report_counts[cid] = _report_counts.get(cid, 0) + 1
+    return {"reported": True, "report_count": _report_counts[cid]}
+
+
+@router.get("/content/spam-check")
+async def spam_check(
+    content: str = Query(min_length=1, description="待检测文本"),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    """
+    预检文本 (前端实时提示)。
+
+    前端在用户输入时调用此接口，实时提示是否有敏感词。
+    """
+    from app.core.content_filter import filter_content
+    result = filter_content(content)
+    return {
+        "allowed": result.allowed,
+        "flagged": result.flagged,
+        "reason": result.reason or "",
+        "matched": result.matched_keywords or result.matched_patterns,
+    }

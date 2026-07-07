@@ -4,6 +4,7 @@
 所有操作用 UUID 确保类型安全，避免跨租户操作。
 """
 
+import asyncio
 import uuid
 from datetime import datetime, timezone
 
@@ -11,6 +12,11 @@ from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.cache import (
+    cache_get, cache_set, cache_delete, post_key, invalidate_feed, invalidate_stats,
+)
+from app.core.content_filter import filter_content
+from app.core.counters import like_counter, like_set, comment_counter, view_counter
 from app.core.exceptions import (
     ConflictException,
     ForbiddenException,
@@ -40,7 +46,12 @@ async def create_post(
     media_urls: list[str] | None = None,
     visibility: str = "public",
 ) -> SocialPost:
-    """发布动态"""
+    """发布动态 + 内容过滤 + 扇出到粉丝 Timeline"""
+    # L1 内容安全过滤
+    check = filter_content(content)
+    if not check.allowed:
+        raise ValidationException(check.reason)
+
     post = SocialPost(
         tenant_id=tenant_id,
         author_id=author_id,
@@ -51,11 +62,47 @@ async def create_post(
     db.add(post)
     await db.commit()
     await db.refresh(post)
+
+    # 公开贴 → 异步扇出到粉丝 Redis Timeline
+    if visibility == "public":
+        asyncio.create_task(
+            _safe_fanout(post.id, author_id, tenant_id, post.created_at)
+        )
+        # 新帖 → 失效全站/关注流缓存
+        asyncio.create_task(invalidate_feed(str(tenant_id)))
+
     return post
 
 
-async def get_post(db: AsyncSession, tenant_id: uuid.UUID, post_id: uuid.UUID) -> SocialPost:
-    """获取动态详情"""
+async def _safe_fanout(
+    post_id: uuid.UUID,
+    author_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    created_at,
+):
+    """扇出包装: 独立 DB 会话 + 异常隔离"""
+    import logging
+    logger = logging.getLogger("opc.feed")
+
+    try:
+        from app.core.database import async_session_factory
+        from app.modules.social.feed_service import fanout_post_to_followers
+
+        async with async_session_factory() as fanout_db:
+            result = await fanout_post_to_followers(
+                fanout_db, post_id, author_id, tenant_id, created_at,
+            )
+            logger.info(
+                f"Fanout done: post={post_id}, "
+                f"count={result.get('fanout_count', 0)}, "
+                f"big_v={result.get('is_big_v', False)}"
+            )
+    except Exception:
+        logger.exception(f"Fanout failed for post={post_id}")
+
+
+async def _get_post_db(db: AsyncSession, tenant_id: uuid.UUID, post_id: uuid.UUID) -> SocialPost:
+    """从 DB 读取帖子 (缓存未命中时调用)"""
     result = await db.execute(
         select(SocialPost).where(
             SocialPost.id == post_id,
@@ -67,6 +114,11 @@ async def get_post(db: AsyncSession, tenant_id: uuid.UUID, post_id: uuid.UUID) -
     if not post:
         raise NotFoundException("动态不存在")
     return post
+
+
+async def get_post(db: AsyncSession, tenant_id: uuid.UUID, post_id: uuid.UUID) -> SocialPost:
+    """获取动态详情 (直接查 DB, Redis 计数器提供实时计数)"""
+    return await _get_post_db(db, tenant_id, post_id)
 
 
 async def get_feed(
@@ -146,6 +198,8 @@ async def update_post(
 
     await db.commit()
     await db.refresh(post)
+    # 失效缓存
+    await cache_delete(post_key(str(post_id)))
     return post
 
 
@@ -154,24 +208,29 @@ async def delete_post(
     tenant_id: uuid.UUID,
     post_id: uuid.UUID,
     author_id: uuid.UUID,
+    is_admin: bool = False,
 ) -> None:
     """软删除动态 (作者或管理员)"""
     post = await get_post(db, tenant_id, post_id)
-    if post.author_id != author_id:
+    if not is_admin and post.author_id != author_id:
         raise ForbiddenException("只能删除自己的动态")
 
     post.is_deleted = True
     post.deleted_at = datetime.now(timezone.utc)
     await db.commit()
+    await cache_delete(post_key(str(post_id)))
 
 
 async def increment_view(db: AsyncSession, tenant_id: uuid.UUID, post_id: uuid.UUID) -> None:
-    """增加浏览次数"""
-    await db.execute(
-        text("UPDATE social_posts SET view_count = view_count + 1 WHERE id = :id AND tenant_id = :tid"),
-        {"id": post_id, "tid": tenant_id},
-    )
-    await db.commit()
+    """增加浏览次数 (Redis 原子 + DB 持久化)"""
+    try:
+        await view_counter.incr(str(post_id))
+    except Exception:
+        await db.execute(
+            text("UPDATE social_posts SET view_count = view_count + 1 WHERE id = :id AND tenant_id = :tid"),
+            {"id": post_id, "tid": tenant_id},
+        )
+        await db.commit()
 
 
 # ============================================================
@@ -187,7 +246,12 @@ async def create_comment(
     content: str,
     parent_id: uuid.UUID | None = None,
 ) -> SocialComment:
-    """发表评论 (或回复)"""
+    """发表评论 (或回复) + 内容过滤"""
+    # L1 内容安全过滤
+    check = filter_content(content)
+    if not check.allowed:
+        raise ValidationException(check.reason)
+
     # 确保动态存在
     await get_post(db, tenant_id, post_id)
 
@@ -211,13 +275,17 @@ async def create_comment(
     )
     db.add(comment)
 
-    # 更新帖子评论数
-    await db.execute(
-        text("UPDATE social_posts SET comment_count = comment_count + 1 WHERE id = :id"),
-        {"id": post_id},
-    )
-
+    # 更新帖子评论数 (Redis 原子 + DB)
     await db.commit()
+    try:
+        await comment_counter.incr(str(post_id))
+    except Exception:
+        # Fallback: DB 直写
+        await db.execute(
+            text("UPDATE social_posts SET comment_count = comment_count + 1 WHERE id = :id"),
+            {"id": post_id},
+        )
+        await db.commit()
     await db.refresh(comment)
     return comment
 
@@ -306,9 +374,40 @@ async def toggle_like(
     target_id: uuid.UUID,
 ) -> dict:
     """
-    切换点赞状态 — 赞过就取消，没赞就点赞。返回当前状态。
+    切换点赞状态 — Redis 原子计数 + DB 持久化。
+
+    读路径: Redis Set → 判断是否已赞
+    写路径: Redis INCR/DECR (原子) + DB 写入 (持久化)
     """
-    # 查找已有点赞
+    pid = str(target_id)
+    uid = str(user_id)
+
+    if target_type == "post":
+        # Redis 去重: 检查是否已赞
+        already_liked = await like_set.is_liked(pid, uid)
+
+        if already_liked:
+            # 取消赞
+            await like_set.remove(pid, uid)
+            await like_counter.decr(pid)
+            is_liked = False
+        else:
+            # 点赞
+            await like_set.add(pid, uid)
+            await like_counter.incr(pid)
+            is_liked = True
+
+        # 异步持久化到 DB (不阻塞响应)
+        import asyncio
+        asyncio.create_task(_persist_like(
+            tenant_id, user_id, target_type, target_id, is_liked
+        ))
+        # 失效帖子缓存
+        await cache_delete(post_key(pid))
+
+        return {"is_liked": is_liked}
+
+    # 非 post 类型 (comment) 走原有 DB 逻辑
     existing = await db.scalar(
         select(SocialLike).where(
             SocialLike.user_id == user_id,
@@ -319,34 +418,58 @@ async def toggle_like(
     )
 
     if existing:
-        # 取消点赞
         existing.is_deleted = True
         existing.deleted_at = datetime.now(timezone.utc)
         await db.commit()
-        count_delta = -1
-        is_liked = False
+        return {"is_liked": False}
     else:
-        # 点赞
         like = SocialLike(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            target_type=target_type,
-            target_id=target_id,
+            tenant_id=tenant_id, user_id=user_id,
+            target_type=target_type, target_id=target_id,
         )
-        db.add(like)
-        await db.commit()
-        count_delta = 1
-        is_liked = True
+        db.add(like); await db.commit()
+        return {"is_liked": True}
 
-    # 更新目标计数
-    if target_type == "post":
-        await db.execute(
-            text("UPDATE social_posts SET like_count = like_count + :d WHERE id = :id"),
-            {"d": count_delta, "id": target_id},
-        )
-        await db.commit()
 
-    return {"is_liked": is_liked}
+async def _persist_like(
+    tenant_id: uuid.UUID, user_id: uuid.UUID,
+    target_type: str, target_id: uuid.UUID, is_liked: bool,
+):
+    """异步持久化点赞记录到 DB (fire-and-forget)"""
+    try:
+        from app.core.database import async_session_factory
+        async with async_session_factory() as db:
+            if is_liked:
+                # 新增点赞
+                existing = await db.scalar(
+                    select(SocialLike).where(
+                        SocialLike.user_id == user_id,
+                        SocialLike.target_type == target_type,
+                        SocialLike.target_id == target_id,
+                        SocialLike.is_deleted == False,
+                    )
+                )
+                if not existing:
+                    db.add(SocialLike(
+                        tenant_id=tenant_id, user_id=user_id,
+                        target_type=target_type, target_id=target_id,
+                    ))
+            else:
+                # 软删除点赞
+                existing = await db.scalar(
+                    select(SocialLike).where(
+                        SocialLike.user_id == user_id,
+                        SocialLike.target_type == target_type,
+                        SocialLike.target_id == target_id,
+                        SocialLike.is_deleted == False,
+                    )
+                )
+                if existing:
+                    existing.is_deleted = True
+                    existing.deleted_at = datetime.now(timezone.utc)
+            await db.commit()
+    except Exception:
+        logger.exception(f"Persist like failed: {target_type}/{target_id}")
 
 
 async def check_liked(
@@ -355,9 +478,17 @@ async def check_liked(
     target_ids: list[uuid.UUID],
     target_type: str = "post",
 ) -> set[uuid.UUID]:
-    """批量检查用户是否点赞了某些目标"""
+    """批量检查用户是否点赞 (Redis 优先, DB 兜底)"""
     if not target_ids:
         return set()
+
+    if target_type == "post":
+        str_ids = [str(pid) for pid in target_ids]
+        liked = await like_set.check_bulk(str_ids, str(user_id))
+        if liked:
+            return {uuid.UUID(pid) for pid in liked}
+        # Redis 无数据时 fallback 到 DB
+
     result = await db.execute(
         select(SocialLike.target_id).where(
             SocialLike.user_id == user_id,

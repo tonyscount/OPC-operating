@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -80,9 +80,12 @@ async def login(
         org_id=user.org_id,
         roles=role_names,
     )
-    refresh_token = create_refresh_token(user.id)
+    refresh_token = create_refresh_token(user.id, tenant.id)
 
-    # 5. 存储 Refresh Token (白名单模式，可主动吊销)
+    # 5. 清理旧 Token + 存储新 Token
+    await db.execute(
+        text("DELETE FROM refresh_tokens WHERE user_id = :uid"), {"uid": user.id}
+    )
     token_hash = _hash_token(refresh_token)
     db.add(
         RefreshToken(
@@ -91,8 +94,6 @@ async def login(
             expires_at=datetime.now(timezone.utc) + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS),
         )
     )
-
-    # 6. 记录登录日志
     await _log_login(db, user.id, tenant.id, ip_address, user_agent, success=True)
     await db.commit()
 
@@ -144,8 +145,12 @@ async def register(db: AsyncSession, *, tenant_name: str, tenant_slug: str,
         org_id=user.org_id,
         roles=["管理员"],
     )
-    refresh_token = create_refresh_token(user.id)
+    refresh_token = create_refresh_token(user.id, tenant.id)
 
+    # 清理旧 Token
+    await db.execute(
+        text("DELETE FROM refresh_tokens WHERE user_id = :uid"), {"uid": user.id}
+    )
     token_hash = _hash_token(refresh_token)
     db.add(
         RefreshToken(
@@ -206,8 +211,9 @@ async def refresh_access_token(db: AsyncSession, refresh_token: str) -> dict:
     user = result.scalar_one()
     role_names = [ur.role.name for ur in user.roles]
 
-    # 吊销旧 Token
-    stored.revoked = True
+    # 吊销旧 Token (直接删除, 避免 UNIQUE 冲突)
+    await db.delete(stored)
+    await db.flush()
 
     # 签发新 Token
     new_access = create_access_token(
@@ -216,7 +222,7 @@ async def refresh_access_token(db: AsyncSession, refresh_token: str) -> dict:
         org_id=user.org_id,
         roles=role_names,
     )
-    new_refresh = create_refresh_token(user.id)
+    new_refresh = create_refresh_token(user.id, payload.tenant_id)
 
     new_hash = _hash_token(new_refresh)
     db.add(

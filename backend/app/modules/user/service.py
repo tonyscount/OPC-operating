@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import cache_get, cache_set, cache_delete, user_key, stats_key
 from app.core.exceptions import (
     ConflictException,
     NotFoundException,
@@ -30,7 +31,14 @@ from app.modules.tenant.models import Organization, User, UserRole
 async def get_profile(
     db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID,
 ) -> dict:
-    """获取用户完整资料 (含社交统计)"""
+    """获取用户完整资料 (含社交统计, 缓存 10min)"""
+    uid_str = str(user_id)
+    key = user_key(uid_str)
+
+    cached = await cache_get(key)
+    if cached:
+        return cached
+
     user = await db.get(User, user_id)
     if not user or user.tenant_id != tenant_id:
         raise NotFoundException("用户不存在")

@@ -12,7 +12,7 @@ DELETE /devices/{id}          — 删除设备
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy import func, select
 
 from app.core.database import get_db
@@ -28,6 +28,7 @@ require_write = PermissionChecker("social:write")
 @router.post("", status_code=status.HTTP_201_CREATED)
 @limiter.limit(RATE_DEVICE_REGISTER)
 async def register_device(
+    request: Request,
     name: str, device_type: str = "opc_gateway",
     ip_address: str | None = None, port: int | None = None,
     location: str | None = None, latitude: float | None = None, longitude: float | None = None,
