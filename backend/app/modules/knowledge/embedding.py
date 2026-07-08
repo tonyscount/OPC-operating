@@ -30,9 +30,14 @@ class EmbeddingService:
 
     @property
     def is_available(self) -> bool:
-        """远程 API Key 已配置时返回 True"""
+        """远程 Embedding API 真正可用时返回 True"""
         key = settings.EMBEDDING_EFFECTIVE_KEY
-        return bool(key and key not in ("", "sk-your-key-here", "sk-change-me-to-your-real-key"))
+        if not key or key in ("", "sk-your-key-here", "sk-change-me-to-your-real-key"):
+            return False
+        # DeepSeek 不提供 embedding 端点 — 除非用户显式配了独立的 EMBEDDING_BASE_URL
+        if "deepseek" in settings.OPENAI_BASE_URL and not settings.EMBEDDING_BASE_URL:
+            return False
+        return True
 
     @property
     def client(self):
@@ -181,13 +186,21 @@ class LocalEmbeddingService:
 def get_embedding_service():
     """
     自动选择 embedding 实现:
-      - 有远程 API Key → EmbeddingService (远程)
-      - 无任何 Key     → LocalEmbeddingService (本地 BGE)
+      - 有专用 Embedding Key/URL                → 远程 API
+      - 主 Key 有效 且 非 DeepSeek              → 远程 API (OpenAI 等)
+      - DeepSeek 做主 LLM (无独立 Embedding Key) → 本地 BGE
+      - 无任何 Key                               → 本地 BGE
     """
     remote = EmbeddingService()
     if remote.is_available:
         logger.info(f"Using remote embedding: {settings.EMBEDDING_EFFECTIVE_URL}/{remote.model}")
         return remote
 
-    logger.info(f"Using local embedding: {settings.LOCAL_EMBEDDING_MODEL}")
+    if "deepseek" in settings.OPENAI_BASE_URL and not settings.EMBEDDING_BASE_URL:
+        logger.info(
+            f"DeepSeek detected as LLM provider (no embedding endpoint), "
+            f"falling back to local: {settings.LOCAL_EMBEDDING_MODEL}"
+        )
+    else:
+        logger.info(f"Using local embedding: {settings.LOCAL_EMBEDDING_MODEL}")
     return LocalEmbeddingService()
