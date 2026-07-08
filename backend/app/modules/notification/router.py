@@ -155,6 +155,12 @@ async def create_conversation(
     uid = uuid.UUID(current_user.sub)
     tid = uuid.UUID(current_user.tenant_id)
 
+    # 校验对方用户存在
+    from app.modules.tenant.models import User
+    other = await db.get(User, with_user_id)
+    if not other or other.tenant_id != tid:
+        raise NotFoundException("用户不存在")
+
     # 检查是否已有 1v1 会话
     existing = (await db.execute(
         select(Conversation).where(
@@ -180,8 +186,8 @@ async def create_conversation(
     conv = Conversation(tenant_id=tid, conversation_type="private", title=title)
     db.add(conv)
     await db.flush()
-    db.add(ConversationParticipant(conversation_id=conv.id, user_id=uid))
-    db.add(ConversationParticipant(conversation_id=conv.id, user_id=with_user_id))
+    db.add(ConversationParticipant(tenant_id=tid, conversation_id=conv.id, user_id=uid))
+    db.add(ConversationParticipant(tenant_id=tid, conversation_id=conv.id, user_id=with_user_id))
     await db.commit()
     return {"id": str(conv.id), "title": title, "existed": False}
 
