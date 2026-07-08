@@ -1,16 +1,14 @@
 """
 中间件栈 —— 请求处理管道。
 
-1. TenantMiddleware: 从 JWT 提取 tenant_id，注入请求上下文
-2. RequestLoggingMiddleware: 请求日志
-3. CORSMiddleware: 跨域处理 (在 main.py 中通过内置中间件处理)
-
 全部使用纯 ASGI 中间件，避免 BaseHTTPMiddleware 与 pytest-asyncio/anyio TaskGroup 的兼容问题。
+
+注意: scope["state"] 由 Starlette Request 构造函数初始化，
+ASGI 中间件不应直接操作它；租户上下文通过 ContextVar 传递。
 """
 
 import time
 import logging
-from uuid import uuid4
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -23,9 +21,8 @@ logger = logging.getLogger("opc.middleware")
 # ========== 租户中间件 ==========
 class TenantMiddleware:
     """
-    请求入口: 自动从 Authorization Header 解析 JWT，提取 tenant_id，
-    注入到 ContextVar 和 request.state。
-    此后所有数据库操作自动带租户隔离。
+    从 Authorization Header 解析 JWT，将 tenant_id 注入 ContextVar。
+    不做 scope["state"] 操作，避免干扰 Starlette State 对象。
     """
 
     def __init__(self, app: ASGIApp):
@@ -36,30 +33,16 @@ class TenantMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # 生成请求 ID
-        request_id = str(uuid4())[:8]
-
-        # 从 headers 提取认证信息
         headers = dict(scope.get("headers", []))
         auth_header = headers.get(b"authorization", b"").decode()
-        tenant_id = None
-        user_id = None
 
         if auth_header.startswith("Bearer "):
             try:
                 token = auth_header[len("Bearer "):]
                 payload = decode_token(token)
                 set_tenant_context(payload.tenant_id)
-                tenant_id = payload.tenant_id
-                user_id = payload.sub
             except Exception:
                 pass
-
-        scope.setdefault("state", type("State", (), {})())
-        state = scope["state"]
-        state.request_id = request_id
-        state.tenant_id = tenant_id
-        state.user_id = user_id
 
         await self.app(scope, receive, send)
 
@@ -88,13 +71,8 @@ class RequestLoggingMiddleware:
         await self.app(scope, receive, send_wrapper)
 
         elapsed = (time.perf_counter() - start) * 1000
-        state = scope.get("state", {})
-        rid = getattr(state, "request_id", "-") if hasattr(state, "request_id") else "-"
-        tid = getattr(state, "tenant_id", "-") if hasattr(state, "tenant_id") else "-"
-
         logger.info(
-            f"[{rid}] {scope['method']} {scope['path']} "
-            f"| tenant={tid} "
+            f"{scope['method']} {scope['path']} "
             f"| {status_code} "
             f"| {elapsed:.1f}ms"
         )
