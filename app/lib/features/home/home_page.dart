@@ -8,119 +8,158 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List _items = [];
+  List _posts = [];
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadFeed();
+    _load();
   }
 
-  Future<void> _loadFeed() async {
+  Future<void> _load() async {
     try {
-      final resp = await ApiClient.instance.get('/discover/feed');
-      setState(() { _items = resp.data['items'] ?? []; _loading = false; });
+      final resp = await ApiClient.instance
+          .get('/social/posts', params: {'feed_type': 'all', 'page_size': '50'});
+      setState(() {
+        _posts = resp.data['items'] ?? [];
+        _loading = false;
+      });
     } catch (_) {
       setState(() => _loading = false);
     }
   }
 
+  Future<void> _likePost(String id) async {
+    try {
+      await ApiClient.instance.post('/social/posts/$id/like');
+      _load();
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0B1120),
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // 顶部状态栏
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Row(
-                  children: [
-                    const CircleAvatar(radius: 20, backgroundColor: Color(0xFF00D4FF), child: Icon(Icons.person, color: Colors.black)),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Engineer_OPC', style: Theme.of(context).textTheme.titleLarge),
-                        Text('🟢 在线 · 运维中', style: Theme.of(context).textTheme.bodyMedium),
-                      ],
-                    ),
-                    const Spacer(),
-                    _statusBubble('🔧', '运维中'),
-                  ],
-                ),
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Color(0xFF00D4FF),
+                      child: Icon(Icons.person, color: Colors.black, size: 20)),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('OPC Feed',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700)),
+                      Text('一人公司社交圈',
+                          style: Theme.of(context).textTheme.bodySmall),
+                    ],
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, color: Color(0xFF00D4FF)),
+                    onPressed: () => _showCompose(),
+                  ),
+                ],
               ),
             ),
-            // 混合信息流
-            if (_loading)
-              const SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
-            else
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (ctx, i) => _items[i]['type'] == 'post' ? _PostCard(_items[i]) : _DeviceCard(_items[i]),
-                  childCount: _items.length,
-                ),
-              ),
+            const Divider(height: 1, color: Color(0xFF1E293B)),
+            // Feed
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: _posts.isEmpty
+                          ? ListView(children: const [
+                              SizedBox(height: 80),
+                              Center(
+                                  child: Text('暂无动态，发布第一条吧',
+                                      style: TextStyle(color: Colors.grey))),
+                            ])
+                          : ListView.builder(
+                              itemCount: _posts.length,
+                              padding: const EdgeInsets.only(bottom: 80),
+                              itemBuilder: (_, i) => _PostCard(
+                                    _posts[i],
+                                    onLike: () => _likePost(_posts[i]['id']),
+                                  ),
+                            ),
+                    ),
+            ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF00D4FF),
+        child: const Icon(Icons.add, color: Colors.black),
+        onPressed: () => _showCompose(),
       ),
     );
   }
 
-  Widget _statusBubble(String emoji, String text) {
-    return GestureDetector(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(20),
+  void _showCompose() {
+    final ctrl = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E293B),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: ctrl,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: '分享你的经验和想法...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () async {
+                  if (ctrl.text.trim().isEmpty) return;
+                  try {
+                    await ApiClient.instance
+                        .post('/social/posts', data: {'content': ctrl.text.trim(), 'visibility': 'public'});
+                    if (mounted) {
+                      Navigator.pop(context);
+                      _load();
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('发布失败: $e')));
+                    }
+                  }
+                },
+                child: const Text('发布'),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
         ),
-        child: Text('$emoji $text', style: const TextStyle(fontSize: 12)),
       ),
     );
   }
 }
 
-// ====== 动态卡片 ======
 class _PostCard extends StatelessWidget {
   final Map item;
-  const _PostCard(this.item);
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              const CircleAvatar(radius: 16, child: Icon(Icons.person, size: 18)),
-              const SizedBox(width: 8),
-              Text('Engineer_OPC', style: Theme.of(context).textTheme.bodyLarge),
-              const Spacer(),
-              Text(_timeAgo(item['created_at'] ?? ''), style: Theme.of(context).textTheme.bodyMedium),
-            ]),
-            const SizedBox(height: 12),
-            Text(item['content'] ?? '', style: Theme.of(context).textTheme.bodyLarge, maxLines: 5, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 12),
-            Row(children: [
-              _actionBtn(Icons.favorite_border, '${item['like_count'] ?? 0}'),
-              const SizedBox(width: 24),
-              _actionBtn(Icons.chat_bubble_outline, '${item['comment_count'] ?? 0}'),
-            ]),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _actionBtn(IconData icon, String label) {
-    return Row(children: [Icon(icon, size: 18, color: Colors.grey), const SizedBox(width: 4), Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12))]);
-  }
+  final VoidCallback onLike;
+  const _PostCard(this.item, {required this.onLike});
 
   String _timeAgo(String iso) {
     try {
@@ -128,51 +167,70 @@ class _PostCard extends StatelessWidget {
       if (diff.inMinutes < 60) return '${diff.inMinutes}分钟前';
       if (diff.inHours < 24) return '${diff.inHours}小时前';
       return '${diff.inDays}天前';
-    } catch (_) { return ''; }
+    } catch (_) {
+      return '';
+    }
   }
-}
-
-// ====== 设备卡片 ======
-class _DeviceCard extends StatelessWidget {
-  final Map item;
-  const _DeviceCard(this.item);
 
   @override
   Widget build(BuildContext context) {
-    final online = item['status'] == 'online';
+    final liked = item['is_liked'] == true;
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      color: const Color(0xFF111827),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 60, height: 60,
-              decoration: BoxDecoration(
-                color: online ? const Color(0xFF00D4FF).withOpacity(0.1) : Colors.grey.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(Icons.router, size: 32, color: online ? const Color(0xFF00D4FF) : Colors.grey),
+            Row(
+              children: [
+                const CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Color(0xFF1E293B),
+                    child: Icon(Icons.person, size: 16, color: Color(0xFF00D4FF))),
+                const SizedBox(width: 8),
+                Text('Engineer_OPC',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                const Spacer(),
+                Text(_timeAgo(item['created_at'] ?? ''),
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(item['name'] ?? '', style: Theme.of(context).textTheme.bodyLarge),
-                  const SizedBox(height: 4),
-                  Text(item['ip_address'] ?? 'IP 未配置', style: Theme.of(context).textTheme.bodyMedium),
-                  if (item['location'] != null) Text(item['location'], style: Theme.of(context).textTheme.bodyMedium),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: online ? Colors.green.withOpacity(0.15) : Colors.grey.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(online ? '在线' : '离线', style: TextStyle(color: online ? Colors.green : Colors.grey, fontSize: 12)),
+            const SizedBox(height: 10),
+            Text(item['content'] ?? '',
+                style: Theme.of(context).textTheme.bodyLarge,
+                maxLines: 6,
+                overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: onLike,
+                  child: Row(
+                    children: [
+                      Icon(liked ? Icons.favorite : Icons.favorite_border,
+                          size: 18,
+                          color: liked ? Colors.redAccent : Colors.grey),
+                      const SizedBox(width: 4),
+                      Text('${item['like_count'] ?? 0}',
+                          style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 24),
+                const Icon(Icons.chat_bubble_outline, size: 18, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text('${item['comment_count'] ?? 0}',
+                    style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                const Spacer(),
+                Text('👁 ${item['view_count'] ?? 0}',
+                    style: const TextStyle(color: Colors.grey, fontSize: 11)),
+              ],
             ),
           ],
         ),

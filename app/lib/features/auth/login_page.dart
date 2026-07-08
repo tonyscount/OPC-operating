@@ -23,7 +23,10 @@ class _LoginPageState extends State<LoginPage> {
         'username': _userCtrl.text.trim(),
         'password': _passCtrl.text,
       });
-      await ApiClient.instance.setToken(resp.data['access_token']);
+      await ApiClient.instance.setTokens(
+        resp.data['access_token'],
+        refresh: resp.data['refresh_token'],
+      );
       if (mounted) context.go('/home');
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
