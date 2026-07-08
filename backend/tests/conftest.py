@@ -1,6 +1,7 @@
 """测试配置 & Fixtures"""
 
 import asyncio
+import os
 from typing import AsyncGenerator
 
 import pytest
@@ -12,8 +13,11 @@ from app.main import create_app
 from app.shared.models import Base
 
 
-# 测试用内存数据库 URL (需单独创建 test DB)
-TEST_DATABASE_URL = "postgresql+asyncpg://opc_user:opc_dev_password@localhost:5432/opc_test"
+# 优先读环境变量 DATABASE_URL (CI 注入)，本地回退到开发默认值
+TEST_DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://opc_user:opc_dev_password@localhost:5432/opc_test",
+)
 
 # 为没有 PG 环境的场景提供标记
 pytestmark = None
