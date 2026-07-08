@@ -34,8 +34,6 @@ STRING_DATE_COLS = [
 
 
 def upgrade():
-    # ---- DIAG: 验证 CI 跑的确实是更新后的代码 ----
-    raise Exception("DIAG: 004 v2 is running (self-healing CREATE TABLE version). If you see this, CI is using the correct file.")
     # ---- 0. 自愈：确保 4 张通知/会话表存在 (防止 002 因 RLS 回滚导致漏建) ----
     op.execute("""
         CREATE TABLE IF NOT EXISTS conversations (

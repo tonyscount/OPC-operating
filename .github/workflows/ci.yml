@@ -83,6 +83,11 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://opc_user:opc_test_password@localhost:5432/opc_test
           DATABASE_URL_SYNC: postgresql://opc_user:opc_test_password@localhost:5432/opc_test
         run: |
+          echo "=== DEBUG: 004 file first 45 lines ==="
+          head -45 backend/alembic/versions/004_rls_notifications_dates.py
+          echo "=== DEBUG: 004 file md5 ==="
+          md5sum backend/alembic/versions/004_rls_notifications_dates.py
+          echo "=== Running migrations ==="
           python -m alembic upgrade head
           echo "Migrations OK"
 
