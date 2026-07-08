@@ -9,11 +9,13 @@ import SkillPage from './pages/SkillPage'
 import DevicesPage from './pages/DevicesPage'
 import OpsPage from './pages/OpsPage'
 import DataPage from './pages/DataPage'
+import TradePage from './pages/TradePage'
 import SettingsModal from './components/SettingsModal'
 import MinePage from './pages/MinePage'
 import UserMenu from './components/UserMenu'
 import NotificationBell from './components/NotificationBell'
 import ChatWidget from './components/ChatWidget'
+import ErrorBoundary from './components/ErrorBoundary'
 
 const TABS = [
   { key: 'knowledge', label: '知识库', path: '/knowledge' },
@@ -118,18 +120,21 @@ function AppContent() {
       )}
 
       <main style={{ padding: isMobile ? 16 : 24 }}>
-        <Routes>
-          <Route path="/" element={<KnowledgePage isMobile={isMobile} />} />
-          <Route path="/knowledge" element={<KnowledgePage isMobile={isMobile} />} />
-          <Route path="/social" element={<SocialPage isMobile={isMobile} />} />
-          <Route path="/skills" element={<SkillPage isMobile={isMobile} />} />
-          <Route path="/agent" element={<AgentPage isMobile={isMobile} />} />
-          <Route path="/devices" element={<DevicesPage />} />
-          <Route path="/data" element={<DataPage />} />
-          <Route path="/ops" element={<OpsPage />} />
-          <Route path="/profile" element={<MinePage user={user} onSettings={() => setShowSettings(true)} />} />
-          <Route path="*" element={<KnowledgePage isMobile={isMobile} />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<KnowledgePage isMobile={isMobile} />} />
+            <Route path="/knowledge" element={<KnowledgePage isMobile={isMobile} />} />
+            <Route path="/social" element={<SocialPage isMobile={isMobile} />} />
+            <Route path="/skills" element={<SkillPage isMobile={isMobile} />} />
+            <Route path="/agent" element={<AgentPage isMobile={isMobile} />} />
+            <Route path="/trade" element={<TradePage />} />
+            <Route path="/devices" element={<DevicesPage />} />
+            <Route path="/data" element={<DataPage />} />
+            <Route path="/ops" element={<OpsPage />} />
+            <Route path="/profile" element={<MinePage user={user} onSettings={() => setShowSettings(true)} />} />
+            <Route path="*" element={<KnowledgePage isMobile={isMobile} />} />
+          </Routes>
+        </ErrorBoundary>
       </main>
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
