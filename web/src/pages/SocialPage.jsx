@@ -213,7 +213,20 @@ export default function SocialPage({ isMobile }) {
             value={content} onChange={e => setContent(e.target.value)}
             className="input" style={{ flex: 1, height: 64, resize: 'none', lineHeight: 1.6 }} />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12, gap: 8, alignItems: 'center' }}>
+          <label style={{ cursor: 'pointer', fontSize: 12, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            📷 图片
+            <input type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={async (e) => {
+                const f = e.target.files?.[0]; if (!f) return
+                const fd = new FormData(); fd.append('file', f)
+                try {
+                  const r = await fetch('/api/v1/upload', { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` }, body: fd })
+                  const d = await r.json()
+                  if (d.url) setContent(prev => prev + `\n![图片](${d.url})`)
+                } catch (err) { alert('上传失败') }
+              }} />
+          </label>
           <button onClick={createPost} disabled={loading || !content.trim()} className="btn" style={{ opacity: loading || !content.trim() ? .5 : 1 }}>{loading ? '发布中...' : '发布动态'}</button>
         </div>
       </div>

@@ -9,8 +9,9 @@ OPC Platform — FastAPI 应用入口
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 from app.core.rate_limit import limiter
@@ -139,9 +140,45 @@ def create_app() -> FastAPI:
     async def metrics():
         return await metrics_endpoint()
 
+    # ---- 文件上传 ----
+    from pathlib import Path as _Path
+    from fastapi import File, UploadFile
+    from fastapi.responses import JSONResponse
+    from app.core.security import TokenPayload, get_current_user
+
+    # 上传目录
+    _UPLOAD_DIR = _Path(__file__).resolve().parent.parent / "uploads"
+    _UPLOAD_DIR.mkdir(exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(_UPLOAD_DIR)), name="uploads")
+
+    @app.post("/api/v1/upload")
+    async def upload_file(
+        file: UploadFile = File(...),
+        current_user: TokenPayload = Depends(get_current_user),
+    ):
+        """上传图片/文件。返回可访问的 URL。"""
+        import hashlib
+
+        # 限制大小 (10MB)
+        content = await file.read()
+        if len(content) > 10 * 1024 * 1024:
+            return JSONResponse({"error": "文件不能超过 10MB"}, status_code=413)
+
+        # 限制类型
+        ext = _Path(file.filename or "file").suffix.lower()
+        allowed = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".mov", ".pdf"}
+        if ext not in allowed:
+            return JSONResponse({"error": f"不支持的文件类型: {ext}"}, status_code=400)
+
+        # 存储
+        fhash = hashlib.md5(content).hexdigest()[:12]
+        safe_name = f"{fhash}{ext}"
+        (_UPLOAD_DIR / safe_name).write_bytes(content)
+
+        return {"url": f"/uploads/{safe_name}", "filename": safe_name, "size": len(content)}
+
     # ---- 前端静态文件 (生产模式) ----
     from pathlib import Path
-    from fastapi.staticfiles import StaticFiles
     from fastapi.responses import FileResponse
 
     dist_path = Path(__file__).resolve().parent.parent.parent / "web" / "dist"
@@ -169,6 +206,7 @@ def register_routers(app: FastAPI) -> None:
     from app.modules.tenant.router import router as tenant_router
     from app.modules.auth.router import router as auth_router
     from app.modules.social.router import router as social_router
+    from app.modules.social.circle_router import router as circle_router
     from app.modules.user.router import router as user_router
     from app.modules.schedule.router import router as schedule_router
 
@@ -183,6 +221,7 @@ def register_routers(app: FastAPI) -> None:
 
     # 社交
     app.include_router(social_router, prefix="/api/v1/social", tags=["社交"])
+    app.include_router(circle_router, prefix="/api/v1/social", tags=["圈子"])
 
     # 定时任务管理
     app.include_router(schedule_router, prefix="/api/v1/schedule", tags=["定时任务"])

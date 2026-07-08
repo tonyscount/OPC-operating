@@ -10,6 +10,7 @@ import DevicesPage from './pages/DevicesPage'
 import OpsPage from './pages/OpsPage'
 import DataPage from './pages/DataPage'
 import TradePage from './pages/TradePage'
+import CirclePage from './pages/CirclePage'
 import SettingsModal from './components/SettingsModal'
 import MinePage from './pages/MinePage'
 import UserMenu from './components/UserMenu'
@@ -128,6 +129,7 @@ function AppContent() {
             <Route path="/skills" element={<SkillPage isMobile={isMobile} />} />
             <Route path="/agent" element={<AgentPage isMobile={isMobile} />} />
             <Route path="/trade" element={<TradePage />} />
+            <Route path="/circles" element={<CirclePage isMobile={isMobile} />} />
             <Route path="/devices" element={<DevicesPage />} />
             <Route path="/data" element={<DataPage />} />
             <Route path="/ops" element={<OpsPage />} />

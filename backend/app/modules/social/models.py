@@ -28,6 +28,10 @@ class SocialPost(TenantBase):
     media_urls: Mapped[list[str] | None] = mapped_column(
         "media_urls", String(1000), nullable=True, comment="JSON 数组字符串"
     )
+    circle_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("social_circles.id", ondelete="SET NULL"), nullable=True,
+        comment="所属圈子 (空=全局动态)"
+    )
     visibility: Mapped[str] = mapped_column(
         String(20), default="public", comment="public/org_only/private"
     )
