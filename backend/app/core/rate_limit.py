@@ -77,8 +77,9 @@ limiter = Limiter(
     key_func=get_user_or_ip_key,
     storage_uri=_build_redis_storage_uri(),
     default_limits=["10000/minute"] if _TESTING else ["200/minute"],     # 测试环境放宽
-    headers_enabled=True,              # 自动注入 X-RateLimit-* 头
+    headers_enabled=not _TESTING,      # 测试环境关闭 X-RateLimit-* 头
     swallow_errors=True,               # Redis 挂了不让业务中断
+    enabled=not _TESTING,              # 测试环境完全关闭 slowapi
 )
 
 
