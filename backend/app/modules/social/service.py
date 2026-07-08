@@ -63,6 +63,12 @@ async def create_post(
     await db.commit()
     await db.refresh(post)
 
+    # 信誉: 发帖 +1
+    from app.modules.user.reputation import add_reputation
+    author = await db.get(User, author_id)
+    if author:
+        await add_reputation(author, "create_post", db)
+
     # 公开贴 → 异步扇出到粉丝 Redis Timeline
     if visibility == "public":
         asyncio.create_task(
@@ -287,6 +293,13 @@ async def create_comment(
         )
         await db.commit()
     await db.refresh(comment)
+
+    # 信誉: 评论 +2 (给评论者)
+    from app.modules.user.reputation import add_reputation
+    commenter = await db.get(User, author_id)
+    if commenter:
+        await add_reputation(commenter, "post_commented", db)
+
     return comment
 
 
@@ -396,6 +409,13 @@ async def toggle_like(
             await like_set.add(pid, uid)
             await like_counter.incr(pid)
             is_liked = True
+            # 信誉: 帖子被点赞 +1 (给作者)
+            post = await db.get(SocialPost, target_id)
+            if post:
+                from app.modules.user.reputation import add_reputation
+                author = await db.get(User, post.author_id)
+                if author:
+                    await add_reputation(author, "post_liked", db)
 
         # 异步持久化到 DB (不阻塞响应)
         import asyncio

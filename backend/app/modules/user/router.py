@@ -4,7 +4,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.database import get_db
 from app.core.security import TokenPayload, get_current_user
@@ -91,3 +91,40 @@ async def search_users(
         page_size=page_size,
     )
     return {"items": items, "total": total, "page": page, "page_size": page_size}
+
+
+# ============================================================
+# 信誉 & 在线状态
+# ============================================================
+
+@router.get("/{user_id}/reputation")
+async def get_reputation(
+    user_id: uuid.UUID,
+    current_user: TokenPayload = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """获取用户信誉分和等级"""
+    from app.modules.tenant.models import User
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return {
+        "user_id": str(user.id),
+        "score": user.reputation_score,
+        "level": user.level,
+        "display_name": user.display_name,
+    }
+
+
+@router.get("/online")
+async def online_users(
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    """当前在线用户列表"""
+    from app.modules.notification.ws import manager as ws_manager
+
+    online_ids = list(ws_manager._connections.keys())
+    return {
+        "online_count": len(online_ids),
+        "user_ids": online_ids,
+    }

@@ -128,11 +128,14 @@ export default function SocialPage({ isMobile }) {
   const [expanded, setExpanded] = useState({}); const [feed, setFeed] = useState('all')
   const [profileUserId, setProfileUserId] = useState(null); const [myId, setMyId] = useState(null)
   const [myStatus, setMyStatus] = useState({ emoji: '', text: '' }); const [editingStatus, setEditingStatus] = useState(false)
+  const [onlineCount, setOnlineCount] = useState(0)
   const load = (type = 'all') => api.getPosts({ page_size: 50, feed_type: type }).then(d => setPosts(d.items || []))
   useEffect(() => {
     load()
     api.me().then(u => setMyId(u.user_id)).catch(() => {})
     api.getMyStatus().then(d => setMyStatus(d)).catch(() => {})
+    fetch('/api/v1/users/online', { headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` } })
+      .then(r => r.json()).then(d => setOnlineCount(d.online_count || 0)).catch(() => {})
   }, [])
 
   const saveStatus = async () => {
@@ -172,6 +175,7 @@ export default function SocialPage({ isMobile }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
         <span className="h1" style={{ marginBottom: 0 }}>社群动态</span>
+        {onlineCount > 0 && <span style={{ fontSize: 12, color: '#22C55E', marginLeft: 8, fontWeight: 500 }}>🟢 {onlineCount} 在线</span>}
         <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
           {['all', 'following'].map(t => (
             <button key={t} onClick={() => switchFeed(t)} className="btn-chip" style={feed === t ? { background: 'var(--accent-subtle)', color: 'var(--accent)', borderColor: 'var(--accent)' } : {}}>

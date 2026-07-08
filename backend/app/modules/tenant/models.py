@@ -11,7 +11,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -93,6 +93,15 @@ class User(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     avatar_url: Mapped[str] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(
         String(20), default="active", comment="active/disabled/banned"
+    )
+    reputation_score: Mapped[int] = mapped_column(
+        Integer, default=0, comment="信誉分 0-100"
+    )
+    level: Mapped[str] = mapped_column(
+        String(20), default="bronze", comment="bronze/silver/gold/platinum/diamond"
+    )
+    last_online_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, comment="最后在线时间"
     )
 
     # 关系
