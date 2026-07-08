@@ -1,9 +1,18 @@
 """社交模块 — Pydantic Schemas"""
 
+import re
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+# HTML 标签清洗 (XSS 防护)。TODO: 未来支持 Markdown/富文本时需替换为白名单方案
+_HTML_TAG_RE = re.compile(r"<[^>]*>")
+
+
+def strip_html(text: str) -> str:
+    """移除所有 HTML 标签，防止 XSS"""
+    return _HTML_TAG_RE.sub("", text)
 
 
 # ============================================================
@@ -14,10 +23,20 @@ class PostCreate(BaseModel):
     media_urls: list[str] | None = Field(None, max_length=9, description="图片/视频 URL 列表")
     visibility: str = Field(default="public", pattern="^(public|org_only|private)$")
 
+    @field_validator("content")
+    @classmethod
+    def sanitize_content(cls, v: str) -> str:
+        return strip_html(v)
+
 
 class PostUpdate(BaseModel):
     content: str | None = Field(None, min_length=1, max_length=5000)
     visibility: str | None = Field(None, pattern="^(public|org_only|private)$")
+
+    @field_validator("content")
+    @classmethod
+    def sanitize_content(cls, v: str | None) -> str | None:
+        return strip_html(v) if v is not None else None
 
 
 class AuthorBrief(BaseModel):
@@ -58,6 +77,11 @@ class PostListParams(BaseModel):
 class CommentCreate(BaseModel):
     content: str = Field(min_length=1, max_length=2000)
     parent_id: UUID | None = None  # 回复某条评论
+
+    @field_validator("content")
+    @classmethod
+    def sanitize_content(cls, v: str) -> str:
+        return strip_html(v)
 
 
 class CommentResponse(BaseModel):
