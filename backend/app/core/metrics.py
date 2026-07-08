@@ -16,8 +16,7 @@ import time
 from typing import Callable
 
 from prometheus_client import Counter, Gauge, Histogram, generate_latest
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
+from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.responses import Response
 
 
@@ -80,35 +79,49 @@ db_connections_active = Gauge(
 # HTTP 中间件 — 自动采集所有请求
 # ═══════════════════════════════════════
 
-class MetricsMiddleware(BaseHTTPMiddleware):
-    """自动采集每个 HTTP 请求的计数 + 延迟"""
+class MetricsMiddleware:
+    """自动采集每个 HTTP 请求的计数 + 延迟 (纯 ASGI 中间件)"""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope["path"]
+        method = scope["method"]
+
         # 跳过 /metrics 自身
-        if request.url.path == "/metrics":
-            return await call_next(request)
+        if path == "/metrics":
+            await self.app(scope, receive, send)
+            return
 
         start = time.perf_counter()
+        status_code = 0
 
-        response = await call_next(request)
+        async def send_wrapper(message):
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = message["status"]
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
 
         elapsed_ms = (time.perf_counter() - start) * 1000
-
-        # 简化 path (避免高基数)
-        path = _normalize_path(request.url.path, response.status_code)
+        normalized_path = _normalize_path(path, status_code)
 
         http_requests_total.labels(
-            method=request.method,
-            path=path,
-            status_code=str(response.status_code),
+            method=method,
+            path=normalized_path,
+            status_code=str(status_code),
         ).inc()
 
         http_request_duration.labels(
-            method=request.method,
-            path=path,
+            method=method,
+            path=normalized_path,
         ).observe(elapsed_ms)
-
-        return response
 
 
 def _normalize_path(path: str, status_code: int) -> str:

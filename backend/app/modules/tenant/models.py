@@ -141,6 +141,11 @@ class UserRole(UUIDMixin, TimestampMixin, Base):
     user: Mapped["User"] = relationship(back_populates="roles")
     role: Mapped["Role"] = relationship(lazy="selectin")
 
+    @property
+    def name(self) -> str:
+        """委托 role.name，兼容 Pydantic from_attributes 校验"""
+        return self.role.name if self.role else ""
+
     __table_args__ = (
         UniqueConstraint("user_id", "role_id", name="uq_user_role"),
     )
