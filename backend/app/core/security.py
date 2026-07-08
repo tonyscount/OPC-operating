@@ -11,7 +11,7 @@ from typing import Any
 from uuid import UUID
 
 import bcrypt
-import jwt
+from jose import ExpiredSignatureError, JWTError, jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
@@ -76,9 +76,9 @@ def decode_token(token: str) -> TokenPayload:
             algorithms=[settings.JWT_ALGORITHM],
         )
         return TokenPayload(**payload)
-    except jwt.ExpiredSignatureError:
+    except ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token 已过期")
-    except jwt.InvalidTokenError:
+    except JWTError:
         raise HTTPException(status_code=401, detail="Token 无效")
 
 
