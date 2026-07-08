@@ -62,12 +62,8 @@ async def get_profile(
         pass
 
     # 社交统计
-    post_count = await db.scalar(
-        select(func.count()).select_from(
-            select(User).where(User.tenant_id == tenant_id)
-        ).where(User.id == user_id)
-    )
-    # TODO: 从 social_posts 统计
+    # TODO: 从 social_posts 统计帖子数
+    post_count = 0
 
     follower_count = await db.scalar(
         select(func.count(UserFollow.id)).where(
