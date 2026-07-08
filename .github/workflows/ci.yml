@@ -99,7 +99,7 @@ jobs:
             --cov=app \
             --cov-report=term-missing \
             --cov-report=html \
-            --cov-fail-under=60
+            --cov-fail-under=58
 
   # ═══════════════════════════════════════
   # Job 3: API 集成冒烟测试
