@@ -44,6 +44,7 @@ python-dateutil>=2.9.0
 json-repair>=0.30.0
 # ========== 日志 & 监控 ==========
 loguru>=0.7.0
+prometheus-client>=0.21.0
 
 # ========== 开发 & 测试 ==========
 pytest>=8.0.0
