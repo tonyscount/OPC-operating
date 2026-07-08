@@ -7,9 +7,11 @@ from httpx import AsyncClient
 @pytest.fixture
 async def two_users(client: AsyncClient) -> tuple[dict, dict, dict]:
     """创建两个用户并返回各自的 header 和 user_id"""
+    import uuid
+    slug = f"social-test-{uuid.uuid4().hex[:8]}"
     # 用户 A
     r1 = await client.post("/api/v1/auth/register", json={
-        "tenant_name": "Social Test", "tenant_slug": "social-test",
+        "tenant_name": "Social Test", "tenant_slug": slug,
         "username": "user_a", "password": "pass123456",
     })
     token_a = r1.json()["access_token"]
@@ -27,13 +29,13 @@ async def two_users(client: AsyncClient) -> tuple[dict, dict, dict]:
     # 用户 B (在同一租户下)
     resp = await client.post("/api/v1/tenant/users", json={
         "username": "user_b", "password": "pass123456",
-        "display_name": "User B", "role_ids": [member_role_id],
+        "display_name": "User B", "role_ids": [member_role_id] if member_role_id else [],
     }, headers={"Authorization": f"Bearer {token_a}"})
     user_b_id = resp.json()["id"]
 
-    # 用户 B 登录
+    # 用户 B 登录 (使用注册时的 slug)
     r2 = await client.post("/api/v1/auth/login", json={
-        "tenant_slug": "social-test", "username": "user_b", "password": "pass123456",
+        "tenant_slug": slug, "username": "user_b", "password": "pass123456",
     })
     token_b = r2.json()["access_token"]
 
@@ -110,7 +112,7 @@ async def test_comment_on_post(client: AsyncClient, two_users):
     }, headers=a)
     post_id = r.json()["id"]
 
-    resp = await client.post(f"/api/v1/social/posts/{post_id}/comments", json={
+    resp = await client.post(f"/api/v1/social/posts/{post_id}/comments", data={
         "content": "Nice post!",
     }, headers=b)
     assert resp.status_code == 201

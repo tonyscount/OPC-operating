@@ -7,9 +7,10 @@ from httpx import AsyncClient
 @pytest.fixture
 async def auth(client: AsyncClient) -> dict:
     """创建搜索测试环境"""
+    import uuid
     resp = await client.post("/api/v1/auth/register", json={
         "tenant_name": "Search Test",
-        "tenant_slug": "search-test",
+        "tenant_slug": f"search-test-{uuid.uuid4().hex[:8]}",
         "username": "searcher",
         "password": "pass123456",
     })

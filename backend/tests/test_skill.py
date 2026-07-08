@@ -9,8 +9,9 @@ from app.modules.skill.executor import executor
 
 @pytest.fixture
 async def auth(client: AsyncClient) -> dict:
+    import uuid
     resp = await client.post("/api/v1/auth/register", json={
-        "tenant_name": "Skill Test", "tenant_slug": "skill-test",
+        "tenant_name": "Skill Test", "tenant_slug": f"skill-test-{uuid.uuid4().hex[:8]}",
         "username": "skill_user", "password": "pass123456",
     })
     token = resp.json()["access_token"]

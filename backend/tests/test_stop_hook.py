@@ -16,8 +16,9 @@ from app.modules.agent.stop_hook import (
 
 @pytest.fixture
 async def auth(client: AsyncClient) -> dict:
+    import uuid
     resp = await client.post("/api/v1/auth/register", json={
-        "tenant_name": "StopHook Test", "tenant_slug": "stophook-test",
+        "tenant_name": "StopHook Test", "tenant_slug": f"stophook-test-{uuid.uuid4().hex[:8]}",
         "username": "sh_user", "password": "pass123456",
     })
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}

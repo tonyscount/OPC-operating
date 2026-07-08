@@ -6,6 +6,7 @@
 - 租户上下文提取
 """
 
+import uuid as _uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
@@ -49,6 +50,7 @@ def create_access_token(
         "exp": datetime.now(timezone.utc)
         + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES),
         "iat": datetime.now(timezone.utc),
+        "jti": str(_uuid.uuid4()),  # 确保每次生成的 token 唯一 (避免同秒碰撞)
         "type": "access",
     }
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
@@ -62,6 +64,7 @@ def create_refresh_token(user_id: str | UUID, tenant_id: str | UUID) -> str:
         "exp": datetime.now(timezone.utc)
         + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS),
         "iat": datetime.now(timezone.utc),
+        "jti": str(_uuid.uuid4()),  # 确保每次生成的 token 唯一 (避免同秒碰撞)
         "type": "refresh",
     }
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)

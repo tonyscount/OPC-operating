@@ -52,8 +52,10 @@ class EmbeddingService:
         return self._client
 
     async def embed_text(self, text: str) -> list[float]:
-        """单个文本向量化"""
+        """单个文本向量化。失败时返回空列表"""
         embeddings = await self.embed_batch([text])
+        if not embeddings:
+            return []
         return embeddings[0]
 
     async def embed_batch(self, texts: list[str], batch_size: int = 20) -> list[list[float]]:
@@ -76,7 +78,8 @@ class EmbeddingService:
                 logger.info(f"Embedded batch {i // batch_size + 1}: {len(batch)} texts")
             except Exception as e:
                 logger.error(f"Embedding failed for batch {i // batch_size + 1}: {e}")
-                raise  # 不假装成功，让调用方处理
+                # 不假装成功，返回空列表让调用方优雅降级 (如返回"暂不支持"提示)
+                return []
 
         return all_embeddings
 

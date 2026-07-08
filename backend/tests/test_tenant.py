@@ -7,9 +7,10 @@ from httpx import AsyncClient
 @pytest.fixture
 async def admin_token(client: AsyncClient) -> str:
     """创建租户并返回管理员 Token"""
+    import uuid
     resp = await client.post("/api/v1/auth/register", json={
         "tenant_name": "Tenant Test Corp",
-        "tenant_slug": "tenant-test-corp",
+        "tenant_slug": f"tenant-test-corp-{uuid.uuid4().hex[:8]}",
         "username": "admin",
         "password": "admin123456",
     })
@@ -28,7 +29,7 @@ async def test_get_tenant_info(client: AsyncClient, auth: dict):
     assert resp.status_code == 200
     data = resp.json()
     assert data["name"] == "Tenant Test Corp"
-    assert data["slug"] == "tenant-test-corp"
+    assert data["slug"].startswith("tenant-test-corp")
     assert data["plan"] == "free"
 
 

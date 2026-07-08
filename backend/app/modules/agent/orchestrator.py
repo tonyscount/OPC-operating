@@ -233,9 +233,35 @@ class AgentOrchestrator:
         messages = [{"role": "system", "content": agent.role_prompt}, {"role": "user", "content": user_message}]
 
         # ReAct Loop
-        final_output, step_count, message_log, stop_info, total_tokens = await self._react_loop(
-            agent, llm, messages, tools, tid, ctx,
-        )
+        try:
+            final_output, step_count, message_log, stop_info, total_tokens = await self._react_loop(
+                agent, llm, messages, tools, tid, ctx,
+            )
+        except Exception as e:
+            logger.error(f"[Orchestrator] LLM call failed: {e}")
+            error_result = {
+                "agent_name": agent_name,
+                "output": None,
+                "error": f"LLM 调用失败: {str(e)}",
+                "steps": 0,
+                "thread_id": tid,
+                "stopped": False,
+                "messages": [],
+            }
+            await self._persist_execution(
+                tenant_id=str(ctx.get("tenant_id", "")),
+                agent_name=agent_name,
+                orchestration_mode="single",
+                input_message=user_message,
+                output_message=None,
+                thread_id=tid,
+                total_steps=0,
+                total_tokens=0,
+                state_snapshot=error_result,
+                status="failed",
+                error_message=f"LLM error: {str(e)[:200]}",
+            )
+            return error_result
 
         # 交付审计
         audit_result = await self._run_audit(agent_name, final_output, message_log)

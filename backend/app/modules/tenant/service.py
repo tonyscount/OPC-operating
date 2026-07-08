@@ -136,10 +136,14 @@ async def create_org(
 
 async def get_org_tree(db: AsyncSession, tenant_id: uuid.UUID) -> list[Organization]:
     """获取组织树 (从根节点开始)"""
+    from sqlalchemy.orm import selectinload
+
     result = await db.execute(
         select(Organization)
         .where(Organization.tenant_id == tenant_id, Organization.parent_id.is_(None))
-        .options(selectinload(Organization.children))
+        .options(
+            selectinload(Organization.children).selectinload(Organization.children),
+        )
         .order_by(Organization.sort_order)
     )
     return list(result.scalars().all())

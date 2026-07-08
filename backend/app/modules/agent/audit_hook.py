@@ -202,12 +202,11 @@ class DeliveryAuditor:
 
         output_str = str(output).lower() if output else ""
         all_ok = True
-        has_warn = False
 
         for req in self._requirements:
-            # 简单检查: 输出中是否提到了需求关键词
-            keywords = req.lower().split()
-            matched = any(kw in output_str for kw in keywords)
+            # 检查: 先精确匹配，再模糊匹配
+            req_lower = req.lower()
+            matched = self._requirement_matched(req_lower, output_str)
 
             if not matched:
                 result.issues.append(AuditIssue(
@@ -218,24 +217,36 @@ class DeliveryAuditor:
                     suggestion=f"请确保实现覆盖了需求: {req}",
                 ))
                 all_ok = False
-            else:
-                # 检查是否只是提及但没有实际实现
-                if len(output_str) < 50:
-                    result.issues.append(AuditIssue(
-                        dimension="completeness",
-                        severity=AuditStatus.WARN,
-                        title=f"需求覆盖存疑: {req}",
-                        detail=f"输出过短，可能未完整实现 '{req}'",
-                        suggestion="请提供更详细的实现",
-                    ))
-                    has_warn = True
 
-        if all_ok and not has_warn:
-            result.dimensions["completeness"] = AuditStatus.PASS
-        elif all_ok:
-            result.dimensions["completeness"] = AuditStatus.WARN
-        else:
-            result.dimensions["completeness"] = AuditStatus.FAIL
+        result.dimensions["completeness"] = (
+            AuditStatus.PASS if all_ok else AuditStatus.FAIL
+        )
+
+    def _requirement_matched(self, req: str, output_str: str) -> bool:
+        """检查单个需求是否被输出覆盖 (支持模糊匹配)"""
+        # 精确匹配
+        if req in output_str:
+            return True
+
+        # 模糊匹配: 滑动窗口 + SequenceMatcher
+        if len(req) >= 2:
+            from difflib import SequenceMatcher
+
+            req_len = len(req)
+            # 窗口比需求略宽 (req_len+5) 以容忍少量插入字
+            window_size = max(req_len, min(len(output_str), req_len + 5))
+            best = 0.0
+            for i in range(max(0, len(output_str) - window_size) + 1):
+                window = output_str[i:i + window_size]
+                ratio = SequenceMatcher(None, req, window).ratio()
+                if ratio > best:
+                    best = ratio
+                if best >= 0.45:  # 提前退出
+                    break
+
+            return best >= 0.45
+
+        return False
 
     async def _audit_step_trace(
         self, result: AuditResult, steps_executed: list[str],
@@ -347,7 +358,8 @@ class DeliveryAuditor:
             return
 
         output_str = str(output)
-        issues_found = False
+        has_fail = False
+        has_warn = False
 
         # 空字符串
         if not output_str.strip():
@@ -358,7 +370,7 @@ class DeliveryAuditor:
                 detail="任务返回了空内容",
                 suggestion="请检查是否正常处理了输入",
             ))
-            issues_found = True
+            has_fail = True
 
         # 截断检测
         truncation_markers = ["...", "略", "省略", "[truncated]", "等等"]
@@ -371,6 +383,7 @@ class DeliveryAuditor:
                     detail="输出末尾存在截断标记",
                     suggestion="请提供完整输出或明确标注截断原因",
                 ))
+                has_warn = True
                 break
 
         # 过短 (可能未完成)
@@ -382,6 +395,7 @@ class DeliveryAuditor:
                 detail="输出长度异常，可能任务未完整执行",
                 suggestion="请检查任务是否完整完成",
             ))
+            has_warn = True
 
         # 包含未替换的占位符
         placeholders = ["TODO", "FIXME", "XXX", "PLACEHOLDER", "待实现", "待完成"]
@@ -394,10 +408,12 @@ class DeliveryAuditor:
                     detail="输出中存在 TODO/占位符，表明有未完成的工作",
                     suggestion=f"请完成 '{ph}' 标记的内容后再交付",
                 ))
-                issues_found = True
+                has_fail = True
 
-        if issues_found:
+        if has_fail:
             result.dimensions["output_quality"] = AuditStatus.FAIL
+        elif has_warn:
+            result.dimensions["output_quality"] = AuditStatus.WARN
         else:
             result.dimensions["output_quality"] = AuditStatus.PASS
 

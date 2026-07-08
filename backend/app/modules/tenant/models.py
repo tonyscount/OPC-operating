@@ -66,7 +66,7 @@ class Organization(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
         "Organization", remote_side="Organization.id", back_populates="children"
     )
     children: Mapped[list["Organization"]] = relationship(
-        "Organization", back_populates="parent"
+        "Organization", back_populates="parent", lazy="selectin",
     )
     users: Mapped[list["User"]] = relationship(back_populates="organization")
 

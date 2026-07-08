@@ -63,3 +63,11 @@ class AgentExecutionResponse(BaseModel):
     total_steps: int = 0
     messages: list[dict] = []
     error: str | None = None
+
+
+class AuditRequest(BaseModel):
+    """交付审计请求"""
+    output: str = Field(min_length=1, description="Agent 输出内容")
+    steps_executed: list[str] = Field(default_factory=list)
+    requirements: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)

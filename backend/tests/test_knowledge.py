@@ -11,9 +11,10 @@ from httpx import AsyncClient
 @pytest.fixture
 async def auth(client: AsyncClient) -> dict:
     """创建知识库测试租户"""
+    import uuid
     resp = await client.post("/api/v1/auth/register", json={
         "tenant_name": "KB Test Corp",
-        "tenant_slug": "kb-test-corp",
+        "tenant_slug": f"kb-test-corp-{uuid.uuid4().hex[:8]}",
         "username": "kb_admin",
         "password": "admin123456",
     })

@@ -198,7 +198,6 @@ async def search_users(
         )
         following_set = {r[0] for r in follows.all()}
         # 好友关系
-        from sqlalchemy import or_
         friends = await db.execute(
             select(UserFriend.user_id, UserFriend.friend_id).where(
                 UserFriend.tenant_id == tenant_id,

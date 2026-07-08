@@ -17,8 +17,9 @@ from app.modules.agent.audit_hook import (
 
 @pytest.fixture
 async def auth(client: AsyncClient) -> dict:
+    import uuid
     resp = await client.post("/api/v1/auth/register", json={
-        "tenant_name": "Audit Test", "tenant_slug": "audit-test",
+        "tenant_name": "Audit Test", "tenant_slug": f"audit-test-{uuid.uuid4().hex[:8]}",
         "username": "audit_user", "password": "pass123456",
     })
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
@@ -32,11 +33,11 @@ async def auth(client: AsyncClient) -> dict:
 async def test_audit_all_pass():
     """所有维度通过"""
     auditor = DeliveryAuditor()
-    auditor.set_requirements(["实现登录功能", "支持JWT"])
+    auditor.set_requirements(["登录功能", "JWT认证"])
     auditor.set_steps(["创建User模型", "编写登录API", "添加测试"])
 
     result = await auditor.audit(
-        output="已实现用户登录功能，使用JWT进行身份验证。包含User模型、登录API和完整测试。",
+        output="已实现用户登录功能和JWT认证。包含User模型、登录API和完整测试。",
         steps_executed=["创建User模型", "编写登录API", "添加测试"],
         errors=[],
     )
@@ -168,9 +169,10 @@ async def test_audit_score_calculation():
     auditor.set_requirements(["A", "B", "C"])
     auditor.set_steps(["1", "2", "3"])
 
-    # 全部完美
+    # 全部完美 — 输出包含所有需求和步骤
     result = await auditor.audit(
-        output="A B C", steps_executed=["1", "2", "3"], errors=[],
+        output="Requirements A, B, and C are all fully implemented and verified.",
+        steps_executed=["1", "2", "3"], errors=[],
     )
     assert result.score == 1.0
 

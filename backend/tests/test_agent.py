@@ -8,8 +8,9 @@ from app.modules.agent.orchestrator import AgentDefinition, orchestrator
 
 @pytest.fixture
 async def auth(client: AsyncClient) -> dict:
+    import uuid
     resp = await client.post("/api/v1/auth/register", json={
-        "tenant_name": "Agent Test", "tenant_slug": "agent-test",
+        "tenant_name": "Agent Test", "tenant_slug": f"agent-test-{uuid.uuid4().hex[:8]}",
         "username": "agent_user", "password": "pass123456",
     })
     token = resp.json()["access_token"]
@@ -43,9 +44,18 @@ def test_list_agents():
 
 
 @pytest.mark.asyncio
-async def test_run_single_without_llm():
+async def test_run_single_without_llm(monkeypatch):
     """Single 模式 — 无 LLM Key 下也能返回正常错误"""
-    # 注册一个简单 Agent (不会真正调 LLM — 测试环境无 API Key)
+    # Mock LLMClient.chat 立即抛出异常，避免真实 API 调用超时
+    async def mock_chat(self, messages, tools=None):
+        raise RuntimeError("Invalid API key")
+
+    monkeypatch.setattr(
+        "app.modules.agent.orchestrator.LLMClient.chat",
+        mock_chat,
+    )
+
+    # 注册一个简单 Agent
     agent = AgentDefinition(
         name="mock_agent",
         role_prompt="你是 Mock Agent",
@@ -54,8 +64,7 @@ async def test_run_single_without_llm():
     )
     orchestrator.register_agent(agent)
 
-    # 会尝试调 LLM 但可能因为 Key 无效而出错
-    # 这里只验证流程不崩溃
+    # LLM 调用会失败，验证流程返回友好错误而不崩溃
     result = await orchestrator.run_single(
         "mock_agent", "Hello", context={"user_id": "u1"},
     )

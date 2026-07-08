@@ -16,7 +16,7 @@ from app.core.database import get_db
 from app.core.rate_limit import RATE_AGENT_RUN, limiter
 from app.core.security import PermissionChecker, TokenPayload, get_current_user
 from app.modules.agent.orchestrator import AgentDefinition, orchestrator
-from app.modules.agent.schemas import AgentCreate, AgentExecutionRequest, AgentExecutionResponse, AgentResponse, AgentUpdate
+from app.modules.agent.schemas import AgentCreate, AgentExecutionRequest, AgentExecutionResponse, AgentResponse, AgentUpdate, AuditRequest
 
 router = APIRouter()
 require_agent_exec = PermissionChecker("agent:execute")
@@ -272,10 +272,7 @@ async def stop_hook_reject(
 
 @router.post("/audit")
 async def run_delivery_audit(
-    output: str,
-    steps_executed: list[str] | None = None,
-    requirements: list[str] | None = None,
-    errors: list[str] | None = None,
+    body: AuditRequest,
     current_user: TokenPayload = Depends(get_current_user),
 ):
     """
@@ -285,13 +282,13 @@ async def run_delivery_audit(
     """
     from app.modules.agent.audit_hook import auditor
 
-    auditor.set_requirements(requirements or [])
-    auditor.set_steps(steps_executed or [])
+    auditor.set_requirements(body.requirements)
+    auditor.set_steps(body.steps_executed)
 
     result = await auditor.audit(
-        output=output,
-        steps_executed=steps_executed or [],
-        errors=errors or [],
+        output=body.output,
+        steps_executed=body.steps_executed,
+        errors=body.errors,
     )
 
     return {
