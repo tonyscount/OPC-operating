@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { api } from '../api/client'
 
 export default function SkillPage({ isMobile }) {
   const [skills, setSkills] = useState([]); const [selected, setSelected] = useState(null)
@@ -6,9 +7,8 @@ export default function SkillPage({ isMobile }) {
   const [error, setError] = useState(null); const [executing, setExecuting] = useState(false)
   const [search, setSearch] = useState(''); const [history, setHistory] = useState([])
 
-  const token = () => localStorage.getItem('opc_token')
   useEffect(() => {
-    fetch('/api/v1/skills', { headers: { Authorization: `Bearer ${token()}` } }).then(r => r.json()).then(d => setSkills((d.skills || []).filter(s => !s.name.startsWith('lenny:'))))
+    api.getSkills().then(d => setSkills((d.skills || []).filter(s => !s.name.startsWith('lenny:'))))
   }, [])
 
   const filtered = skills.filter(s => !search || s.name.toLowerCase().includes(search.toLowerCase()) || (s.display_name || '').toLowerCase().includes(search.toLowerCase()))
@@ -17,7 +17,7 @@ export default function SkillPage({ isMobile }) {
   const execute = async () => {
     if (!selected) return; setExecuting(true); setResult(null); setError(null)
     try {
-      const r = await fetch('/api/v1/skills/execute', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` }, body: JSON.stringify({ skill_name: selected.name, parameters: params }) }).then(r => r.json())
+      const r = await api.executeSkill(selected.name, params)
       if (r.success) { setResult(r.result); setHistory(prev => [{ skill: selected.name, time: new Date().toISOString(), ok: true }, ...prev].slice(0, 20)) }
       else { setError(r.error); setHistory(prev => [{ skill: selected.name, time: new Date().toISOString(), ok: false, err: r.error }, ...prev].slice(0, 20)) }
     } catch (e) { setError(e.message) }

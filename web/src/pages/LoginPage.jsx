@@ -14,12 +14,8 @@ export default function LoginPage({ onLogin }) {
     e.preventDefault(); setLoading(true); setErr('')
     try {
       if (isRegister) {
-        const r = await fetch('/api/v1/auth/register', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tenant_name: tenantName, tenant_slug: slug, username: user, password: pass, display_name: user }),
-        })
-        if (!r.ok) { const d = await r.json(); throw new Error(d.error?.message || '注册失败') }
-        const d = await r.json(); setToken(d.access_token); setRefreshToken(d.refresh_token); onLogin()
+        const d = await api.register({ tenant_name: tenantName, tenant_slug: slug, username: user, password: pass, display_name: user })
+        setToken(d.access_token); setRefreshToken(d.refresh_token); onLogin()
       } else {
         const d = await api.login(slug, user, pass); setToken(d.access_token); setRefreshToken(d.refresh_token); onLogin()
       }

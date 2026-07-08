@@ -10,15 +10,14 @@ export default function OpsPage() {
 
   const load = () => {
     api.getDashboard().then(setDash)
-    fetch('/api/v1/schedule/status', { headers: { Authorization: `Bearer ${tok()}` } }).then(r => r.json()).then(setTaskStatus)
+    api.getScheduleStatus().then(setTaskStatus)
   }
   useEffect(() => { load() }, [])
 
   const runDaily = async () => {
     setRunning(true); setDailyResult(null)
     try {
-      const r = await fetch('/api/v1/schedule/run-daily', { method: 'POST', headers: { Authorization: `Bearer ${tok()}` } })
-      setDailyResult(await r.json())
+      setDailyResult(await api.runDailyTasks())
     } catch (e) { setDailyResult({ error: e.message }) }
     setRunning(false)
     setTimeout(() => load(), 1000)

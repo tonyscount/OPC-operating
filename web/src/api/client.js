@@ -10,6 +10,11 @@ const headers = () => {
   return h;
 };
 
+const authHeaders = () => {
+  const t = token();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+};
+
 /** 全局 429 回调 — 页面可覆盖此函数以自定义提示 UI */
 let onRateLimited = (retryAfter, message) => {
   const sec = retryAfter || 60;
@@ -64,17 +69,15 @@ async function request(method, path, body, retry = true) {
 
     try {
       await refreshPromise;
-      // Retry the original request with the fresh token
       return request(method, path, body, false);
     } catch (_e) {
-      // Refresh failed — clear tokens and redirect to login
       clearTokens();
       window.location.href = '/login';
       throw _e;
     }
   }
 
-  // 429 限流 — 提取 Retry-After 并回调
+  // 429 限流
   if (res.status === 429) {
     const retryAfter = res.headers.get('Retry-After') || 60;
     let message = '请求过于频繁，请稍后再试';
@@ -91,81 +94,169 @@ async function request(method, path, body, retry = true) {
   return data;
 }
 
+// Form-encoded request (no JSON body, no Content-Type header)
+async function requestForm(method, path, formData) {
+  const opts = { method, headers: authHeaders(), body: formData };
+  const res = await fetch(`${BASE}${path}`, opts);
+
+  if (res.status === 401) {
+    try {
+      await refreshToken();
+      opts.headers = authHeaders();
+      const retryRes = await fetch(`${BASE}${path}`, opts);
+      if (!retryRes.ok) throw new Error(retryRes.statusText);
+      return retryRes.json();
+    } catch (_e) {
+      clearTokens();
+      window.location.href = '/login';
+      throw _e;
+    }
+  }
+
+  if (res.status === 429) {
+    const retryAfter = res.headers.get('Retry-After') || 60;
+    onRateLimited(Number(retryAfter), '请求过于频繁');
+    throw new Error('Rate limited');
+  }
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || res.statusText);
+  return data;
+}
+
 export const api = {
-  // Auth
+  // ========== Auth ==========
   login: (tenant_slug, username, password) =>
     request('POST', '/auth/login', { tenant_slug, username, password }),
+  register: (data) =>
+    request('POST', '/auth/register', data),
   me: () => request('GET', '/auth/me'),
+  refresh: (refreshToken) =>
+    request('POST', '/auth/refresh', { refresh_token: refreshToken }),
+  logout: async () => {
+    try { await request('POST', '/auth/logout'); } catch (_) { /* 即使失败也要清本地 */ }
+    clearTokens();
+  },
 
-  // Knowledge
+  // ========== Knowledge ==========
   getDocuments: (params = {}) =>
     request('GET', `/knowledge/documents?${new URLSearchParams(params)}`),
   getDocument: (id) => request('GET', `/knowledge/documents/${id}`),
   deleteDocument: (id) => request('DELETE', `/knowledge/documents/${id}`),
-  uploadDocument: (formData) => {
-    const opts = { method: 'POST', headers: { Authorization: headers().Authorization }, body: formData };
-    return fetch(`${BASE}/knowledge/upload`, opts).then(r => r.json());
-  },
+  uploadDocument: (formData) => requestForm('POST', '/knowledge/upload', formData),
   uploadText: (title, content) => {
     const fd = new FormData();
     fd.append('title', title);
     fd.append('content', content);
-    const opts = { method: 'POST', headers: { Authorization: headers().Authorization }, body: fd };
-    return fetch(`${BASE}/knowledge/text`, opts).then(r => r.json());
+    return requestForm('POST', '/knowledge/text', fd);
   },
   askQuestion: (question, userRole = 'member') => {
     const fd = new FormData();
     fd.append('question', question);
     fd.append('top_k', '5');
     if (userRole) fd.append('user_role', userRole);
-    const opts = { method: 'POST', headers: { Authorization: headers().Authorization }, body: fd };
-    return fetch(`${BASE}/knowledge/ask`, opts).then(r => r.json());
+    return requestForm('POST', '/knowledge/ask', fd);
   },
   getCategories: () => request('GET', '/knowledge/categories'),
   createCategory: (name, description) => {
     const fd = new FormData();
     fd.append('name', name);
     if (description) fd.append('description', description);
-    const opts = { method: 'POST', headers: { Authorization: headers().Authorization }, body: fd };
-    return fetch(`${BASE}/knowledge/categories`, opts).then(r => r.json());
+    return requestForm('POST', '/knowledge/categories', fd);
   },
   getExpiringDocuments: () => request('GET', '/knowledge/documents/expiring'),
-  renewDocument: (id) => {
-    const fd = new FormData();
-    const opts = { method: 'POST', headers: { Authorization: headers().Authorization }, body: fd };
-    return fetch(`${BASE}/knowledge/documents/${id}/renew`, opts).then(r => r.json());
-  },
+  renewDocument: (id) => requestForm('POST', `/knowledge/documents/${id}/renew`, new FormData()),
   getStats: () => request('GET', '/knowledge/stats'),
   fulltextSearch: (q) => request('GET', `/knowledge/search?q=${encodeURIComponent(q)}`),
 
-  // Social
+  // ========== Social ==========
   getPosts: (params = {}) =>
     request('GET', `/social/posts?${new URLSearchParams(params)}`),
-  createPost: (content) => request('POST', '/social/posts', { content }),
+  createPost: (content, visibility = 'public') =>
+    request('POST', '/social/posts', { content, visibility }),
+  deletePost: (id) => request('DELETE', `/social/posts/${id}`),
   archivePost: (id, category, tags) => {
     const fd = new FormData();
     if (category) fd.append('category', category);
     if (tags) fd.append('tags', tags);
-    const opts = { method: 'POST', headers: { Authorization: headers().Authorization }, body: fd };
-    return fetch(`${BASE}/social/posts/${id}/archive-to-knowledge`, opts).then(r => r.json());
+    return requestForm('POST', `/social/posts/${id}/archive-to-knowledge`, fd);
   },
-  deletePost: (id) => request('DELETE', `/social/posts/${id}`),
 
-  // Agent
+  // Social — comments
+  getComments: (postId) => request('GET', `/social/posts/${postId}/comments`),
+  createComment: (postId, content) => {
+    const fd = new FormData();
+    fd.append('content', content);
+    return requestForm('POST', `/social/posts/${postId}/comments`, fd);
+  },
+  likeComment: (commentId) => request('POST', `/social/comments/${commentId}/like`),
+
+  // Social — likes
+  likePost: (postId) => request('POST', `/social/posts/${postId}/like`),
+  unlikePost: (postId) => request('DELETE', `/social/posts/${postId}/like`),
+
+  // Social — follow & friends
+  followUser: (userId) => request('POST', `/social/users/${userId}/follow`),
+  getFriends: () => request('GET', '/social/friends'),
+  sendFriendRequest: (friendId) =>
+    request('POST', '/social/friends/request', { friend_id: friendId }),
+  acceptFriend: (id) => request('POST', `/social/friends/${id}/accept`),
+
+  // ========== Agent ==========
   listAgents: () => request('GET', '/agent/list'),
   runAgent: (agentName, message, mode = 'single') =>
     request('POST', '/agent/run', { agent_name: agentName, message, mode }),
 
-  // Device
-  getDevices: () => request('GET', '/devices'),
+  // ========== Skills ==========
+  getSkills: () => request('GET', '/skills'),
+  executeSkill: (skillName, parameters = {}) =>
+    request('POST', '/skills/execute', { skill_name: skillName, parameters }),
 
-  // Discover
+  // ========== Devices ==========
+  getDevices: () => request('GET', '/devices'),
+  registerDevice: (data) => requestForm('POST', '/devices', data),
+  updateDeviceStatus: (id, status) => {
+    const fd = new FormData();
+    fd.append('status', status);
+    return requestForm('PATCH', `/devices/${id}/status`, fd);
+  },
+
+  // ========== Discover ==========
   getFeed: (page = 1) => request('GET', `/discover/feed?page=${page}`),
   getNearby: (lat, lng) => request('GET', `/discover/nearby?lat=${lat}&lng=${lng}`),
   getBusinessCard: (userId) => request('GET', `/discover/users/${userId}/business-card`),
+  getMyStatus: () => request('GET', '/discover/users/me/status'),
+  updateMyStatus: (data) => {
+    const fd = new FormData();
+    if (data.status_text) fd.append('status_text', data.status_text);
+    if (data.mood) fd.append('mood', data.mood);
+    return requestForm('PATCH', '/discover/users/me/status', fd);
+  },
 
-  // Ops
+  // ========== Ops ==========
   getDashboard: () => request('GET', '/ops/dashboard'),
+
+  // ========== Schedule ==========
+  getScheduleStatus: () => request('GET', '/schedule/status'),
+  runDailyTasks: () => request('POST', '/schedule/run-daily'),
+
+  // ========== Notifications ==========
+  getNotifications: () => request('GET', '/notifications'),
+  getUnreadCount: () => request('GET', '/notifications/unread-count'),
+  markRead: (id) => request('PATCH', `/notifications/${id}/read`),
+  markAllRead: () => request('POST', '/notifications/read-all'),
+
+  // ========== Conversations ==========
+  getConversations: () => request('GET', '/conversations'),
+  getMessages: (convId) => request('GET', `/conversations/${convId}/messages`),
+
+  // ========== Settings ==========
+  getLLMSettings: () => request('GET', '/settings/llm'),
+  updateLLMSettings: (data) => request('POST', '/settings/llm', data),
+
+  // ========== Search ==========
+  search: (query, page = 1, pageSize = 10) =>
+    request('POST', '/search', { query, page, page_size: pageSize }),
 };
 
 export const setToken = (t) => localStorage.setItem('opc_token', t);
@@ -177,3 +268,6 @@ export const clearTokens = () => {
 };
 export const clearToken = clearTokens; // backwards compatibility
 export const isLoggedIn = () => !!token();
+
+// Re-export for convenience
+export { token, authHeaders };

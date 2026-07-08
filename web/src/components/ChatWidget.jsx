@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { api, token } from '../api/client'
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false)
@@ -9,19 +10,17 @@ export default function ChatWidget() {
   const [ws, setWs] = useState(null)
   const msgRef = useRef(null)
 
-  const token = () => localStorage.getItem('opc_token')
-
   const loadConvs = async () => {
     try {
-      const r = await fetch('/api/v1/conversations', { headers: { Authorization: `Bearer ${token()}` } })
-      setConvs((await r.json()).items || [])
+      const d = await api.getConversations()
+      setConvs(d.items || [])
     } catch (e) {}
   }
 
   const loadMessages = async (convId) => {
     try {
-      const r = await fetch(`/api/v1/conversations/${convId}/messages`, { headers: { Authorization: `Bearer ${token()}` } })
-      setMessages((await r.json()).items || [])
+      const d = await api.getMessages(convId)
+      setMessages(d.items || [])
     } catch (e) {}
   }
 

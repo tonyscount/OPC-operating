@@ -28,23 +28,18 @@ function CommentSection({ postId, expanded }) {
   const [replyTo, setReplyTo] = useState(null); const [loading, setLoading] = useState(false)
   const [liked, setLiked] = useState({})
 
-  const token = () => localStorage.getItem('opc_token')
-  const authHdr = () => ({ Authorization: `Bearer ${token()}` })
-
   const loadComments = async () => {
     try {
-      const r = await fetch(`/api/v1/social/posts/${postId}/comments`, { headers: authHdr() })
-      const d = await r.json(); setComments(d.items || [])
+      const d = await api.getComments(postId)
+      setComments(d.items || [])
     } catch (e) {}
   }
   useEffect(() => { if (expanded) loadComments() }, [expanded])
 
   const addComment = async (parentId = null) => {
     if (!text.trim()) return; setLoading(true)
-    const fd = new FormData(); fd.append('content', text.trim())
-    if (parentId) fd.append('parent_id', parentId)
     try {
-      await fetch(`/api/v1/social/posts/${postId}/comments`, { method: 'POST', headers: { Authorization: `Bearer ${token()}` }, body: fd })
+      await api.createComment(postId, text.trim())
       setText(''); setReplyTo(null); loadComments()
     } catch (e) {}
     setLoading(false)
@@ -52,7 +47,7 @@ function CommentSection({ postId, expanded }) {
 
   const likeComment = async (commentId) => {
     setLiked(prev => ({ ...prev, [commentId]: !prev[commentId] }))
-    try { await fetch(`/api/v1/social/comments/${commentId}/like`, { method: 'POST', headers: authHdr() }) } catch (e) {}
+    try { await api.likeComment(commentId) } catch (e) {}
   }
 
   if (!expanded) return null
@@ -96,20 +91,17 @@ const actBtn = { background: 'none', border: 'none', cursor: 'pointer', fontSize
 function FriendPanel() {
   const [friends, setFriends] = useState([]); const [requests, setRequests] = useState([]); const [show, setShow] = useState(false)
 
-  const token = () => localStorage.getItem('opc_token')
-  const hdr = () => ({ Authorization: `Bearer ${token()}` })
-
   const loadFriends = async () => {
     try {
-      const r = await fetch('/api/v1/social/friends', { headers: hdr() })
-      setFriends((await r.json()).items || [])
+      const d = await api.getFriends()
+      setFriends(d.items || [])
     } catch (e) {}
   }
   const addFriend = async (userId) => {
-    await fetch('/api/v1/social/friends/request', { method: 'POST', headers: { ...hdr(), 'Content-Type': 'application/json' }, body: JSON.stringify({ friend_id: userId }) })
+    await api.sendFriendRequest(userId)
     alert('好友申请已发送')
   }
-  const acceptFriend = async (id) => { await fetch(`/api/v1/social/friends/${id}/accept`, { method: 'POST', headers: hdr() }); loadFriends() }
+  const acceptFriend = async (id) => { await api.acceptFriend(id); loadFriends() }
 
   useEffect(() => { if (show) loadFriends() }, [show])
 
@@ -140,12 +132,11 @@ export default function SocialPage({ isMobile }) {
   useEffect(() => {
     load()
     api.me().then(u => setMyId(u.user_id)).catch(() => {})
-    fetch('/api/v1/discover/users/me/status', { headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` } }).then(r => r.json()).then(d => setMyStatus(d)).catch(() => {})
+    api.getMyStatus().then(d => setMyStatus(d)).catch(() => {})
   }, [])
 
   const saveStatus = async () => {
-    const fd = new FormData(); fd.append('emoji', myStatus.emoji); fd.append('text', myStatus.text)
-    await fetch('/api/v1/discover/users/me/status', { method: 'PATCH', headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` }, body: fd })
+    await api.updateMyStatus({ status_text: myStatus.text, mood: myStatus.emoji })
     setEditingStatus(false)
   }
 
@@ -154,13 +145,12 @@ export default function SocialPage({ isMobile }) {
   const switchFeed = (type) => { setFeed(type); load(type) }
   const [followingSet, setFollowingSet] = useState(new Set())
   const addFriend = async (userId) => {
-    const tok = localStorage.getItem('opc_token')
-    await fetch('/api/v1/social/friends/request', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` }, body: JSON.stringify({ friend_id: userId }) })
+    await api.sendFriendRequest(userId)
     alert('好友申请已发送')
   }
   const followUser = async (userId) => {
     setFollowingSet(prev => new Set([...prev, userId]))
-    try { await fetch(`/api/v1/social/users/${userId}/follow`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` } }) } catch (e) {
+    try { await api.followUser(userId) } catch (e) {
       setFollowingSet(prev => { const n = new Set(prev); n.delete(userId); return n })
     }
   }
@@ -171,7 +161,7 @@ export default function SocialPage({ isMobile }) {
       const wasLiked = p.is_liked
       return { ...p, is_liked: !wasLiked, like_count: (p.like_count || 0) + (wasLiked ? -1 : 1) }
     }))
-    try { await fetch(`/api/v1/social/posts/${id}/like`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` } }) } catch (e) { load() }
+    try { await api.likePost(id) } catch (e) { load() }
   }
   const deletePost = async (id) => { setPosts(prev => prev.filter(p => p.id !== id)); try { await api.deletePost(id) } catch (e) { load() } }
   const toggleExpand = (id) => { setExpanded(prev => { const n = {...prev}; n[id] = !prev[id]; return n }) }
@@ -197,7 +187,7 @@ export default function SocialPage({ isMobile }) {
         <div style={{ flex: 1, position: 'relative' }}>
           <input placeholder="🔍 搜索帖子、文档、用户..." className="input" style={{ paddingLeft: 32 }}
             onKeyDown={async (e) => {
-              if (e.key === 'Enter') { const r = await fetch('/api/v1/search', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('opc_token')}` }, body: JSON.stringify({ query: e.target.value, page: 1 }) }); const d = await r.json(); alert(`找到 ${d.total} 条结果`) }
+              if (e.key === 'Enter') { try { const d = await api.search(e.target.value); alert(`找到 ${d.total} 条结果`) } catch (err) { alert('搜索失败') } }
             }} />
         </div>
         <button onClick={() => setEditingStatus(true)} className="btn-secondary" style={{ fontSize: 12 }}>

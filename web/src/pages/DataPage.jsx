@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { api } from '../api/client'
 
 /**
  * Minimal SVG sparkline — Phenomenon Studio style
@@ -66,17 +67,11 @@ export default function DataPage() {
   const [overview, setOverview] = useState(null)
   const [range, setRange] = useState('7d')
 
-  const token = () => localStorage.getItem('opc_token')
-  const hdr = () => ({ Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' })
-
   useEffect(() => {
-    fetch('/api/v1/skills/execute', { method: 'POST', headers: hdr(),
-      body: JSON.stringify({ skill_name: 'data_query', parameters: { metric: 'trend', time_range: range } })
-    }).then(r => r.json()).then(d => setTrend(d.result?.data || []))
-
-    fetch('/api/v1/skills/execute', { method: 'POST', headers: hdr(),
-      body: JSON.stringify({ skill_name: 'data_query', parameters: { metric: 'overview', time_range: range } })
-    }).then(r => r.json()).then(d => setOverview(d.result))
+    api.executeSkill('data_query', { metric: 'trend', time_range: range })
+      .then(d => setTrend(d.result?.data || []))
+    api.executeSkill('data_query', { metric: 'overview', time_range: range })
+      .then(d => setOverview(d.result))
   }, [range])
 
   const postData = (trend || []).map(d => d.posts)

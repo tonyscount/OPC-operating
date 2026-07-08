@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { api } from '../api/client'
 
 const PROVIDERS = [
   { key: 'deepseek', label: 'DeepSeek', url: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
@@ -17,19 +18,17 @@ export default function SettingsModal({ onClose }) {
   const current = PROVIDERS.find(p => p.key === provider)
 
   useEffect(() => {
-    fetch('/api/v1/settings/llm', { headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` } })
-      .then(r => r.json()).then(d => { setConfig(d); setProvider(d.provider || 'deepseek') }).catch(() => {})
+    api.getLLMSettings().then(d => { setConfig(d); setProvider(d.provider || 'deepseek') }).catch(() => {})
   }, [])
 
   const save = async () => {
     if (!key.trim()) return; setSaving(true); setMsg('')
     try {
-      const r = await fetch('/api/v1/settings/llm', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('opc_token')}` },
-        body: JSON.stringify({ api_key: key.trim(), provider: current.key, base_url: current.url, model: current.model }),
+      const d = await api.updateLLMSettings({
+        api_key: key.trim(), provider: current.key, base_url: current.url, model: current.model,
       })
-      const d = await r.json()
-      if (d.error) { setMsg('保存失败') } else { setSaved(true); setMsg('已应用'); setKey(''); setConfig(d); setTimeout(() => { setSaved(false); onClose() }, 1500) }
+      setSaved(true); setMsg('已应用'); setKey(''); setConfig(d)
+      setTimeout(() => { setSaved(false); onClose() }, 1500)
     } catch (e) { setMsg('保存失败') }
     setSaving(false)
   }

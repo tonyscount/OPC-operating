@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
+import { api } from '../api/client'
 
 export default function MinePage({ onSettings, user }) {
   const [stats, setStats] = useState({})
 
   useEffect(() => {
-    fetch('/api/v1/ops/dashboard', { headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` } }).then(r => r.json()).then(setStats)
+    api.getDashboard().then(setStats)
   }, [])
 
   const name = user?.display_name || user?.username || 'OP'

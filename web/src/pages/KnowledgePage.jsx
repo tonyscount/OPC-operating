@@ -17,8 +17,7 @@ export default function KnowledgePage({ isMobile }) {
     api.getExpiringDocuments().then(d => setExpiring(d.items || []))
   }
   useEffect(() => { load()
-    fetch('/api/v1/skills', { headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` } })
-      .then(r => r.json()).then(d => setSkills(d.skills || []))
+    api.getSkills().then(d => setSkills(d.skills || []))
   }, [])
 
   const ask = async () => {
@@ -36,7 +35,7 @@ export default function KnowledgePage({ isMobile }) {
   const handleRenew = async (id) => { await api.renewDocument(id); load() }
   const runSkill = async (name) => {
     setLoading(true); setAnswer(''); setThinkingSteps([])
-    try { const r = await fetch('/api/v1/skills/execute', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('opc_token')}` }, body: JSON.stringify({ skill_name: name, parameters: {} }) }).then(r => r.json()); setAnswer(`${name}\n${JSON.stringify(r.result || r, null, 2)}`) } catch (e) { setAnswer('失败: ' + e.message) }
+    try { const r = await api.executeSkill(name); setAnswer(`${name}\n${JSON.stringify(r.result || r, null, 2)}`) } catch (e) { setAnswer('失败: ' + e.message) }
     setLoading(false)
   }
   const ROLES = { '新人': '新人', '核心成员': '成员', '主理人': '主理人' }

@@ -11,14 +11,11 @@ export default function DevicesPage() {
   const addDevice = async (e) => {
     e.preventDefault()
     const fd = new FormData(); fd.append('name', form.name); fd.append('device_type', form.device_type); fd.append('ip_address', form.ip_address); fd.append('location', form.location)
-    const opts = { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` }, body: fd }
-    await fetch('/api/v1/devices', opts); setShowAdd(false); setForm({ name: '', device_type: 'opc_gateway', ip_address: '', location: '' }); load()
+    await api.registerDevice(fd); setShowAdd(false); setForm({ name: '', device_type: 'opc_gateway', ip_address: '', location: '' }); load()
   }
 
   const updateStatus = async (id, status) => {
-    const fd = new FormData(); fd.append('status', status)
-    const opts = { method: 'PATCH', headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` }, body: fd }
-    await fetch(`/api/v1/devices/${id}/status`, opts); load()
+    await api.updateDeviceStatus(id, status); load()
   }
 
   const online = devices.filter(d => d.status === 'online').length

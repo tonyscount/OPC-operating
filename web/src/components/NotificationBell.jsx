@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { api } from '../api/client'
 
 export default function NotificationBell() {
   const [unread, setUnread] = useState(0)
@@ -8,10 +9,8 @@ export default function NotificationBell() {
 
   const load = async () => {
     try {
-      const r = await fetch('/api/v1/notifications', { headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` } })
-      const d = await r.json(); setNotifs(d.items || [])
-      const r2 = await fetch('/api/v1/notifications/unread-count', { headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` } })
-      setUnread((await r2.json()).unread || 0)
+      const d = await api.getNotifications(); setNotifs(d.items || [])
+      const u = await api.getUnreadCount(); setUnread(u.unread || 0)
     } catch (e) {}
   }
 
@@ -23,11 +22,11 @@ export default function NotificationBell() {
   }, [])
 
   const markRead = async (id) => {
-    await fetch(`/api/v1/notifications/${id}/read`, { method: 'PATCH', headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` } })
+    await api.markRead(id)
     load()
   }
   const markAll = async () => {
-    await fetch('/api/v1/notifications/read-all', { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('opc_token')}` } })
+    await api.markAllRead()
     load()
   }
 

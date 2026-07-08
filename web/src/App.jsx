@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
-import { isLoggedIn, clearToken, api } from './api/client'
+import { isLoggedIn, api } from './api/client'
 import LoginPage from './pages/LoginPage'
 import KnowledgePage from './pages/KnowledgePage'
 import SocialPage from './pages/SocialPage'
@@ -62,7 +62,7 @@ function AppContent() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
   useEffect(() => {
-    if (loggedIn) api.me().then(setUser).catch(() => { clearToken(); setLoggedIn(false) })
+    if (loggedIn) api.me().then(setUser).catch(() => { api.logout(); setLoggedIn(false) })
   }, [loggedIn])
 
   if (!loggedIn) return <LoginPage onLogin={() => setLoggedIn(true)} />
@@ -91,10 +91,12 @@ function AppContent() {
               onKeyDown={async (e) => {
                 if (e.key === 'Enter' && e.target.value.trim()) {
                   const q = e.target.value.trim()
-                  const r = await fetch('/api/v1/search', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('opc_token')}` }, body: JSON.stringify({ query: q, page: 1, page_size: 10 }) })
-                  const d = await r.json(); const items = d.items || []
-                  navigate(`/search?q=${encodeURIComponent(q)}`)
-                  alert(items.length === 0 ? '未找到结果' : `找到 ${d.total} 条:\n${items.map(i => `· [${i.source_type}] ${(i.title||'').slice(0,50)}`).join('\n')}`)
+                  try {
+                    const d = await api.search(q)
+                    const items = d.items || []
+                    navigate(`/search?q=${encodeURIComponent(q)}`)
+                    alert(items.length === 0 ? '未找到结果' : `找到 ${d.total} 条:\n${items.map(i => `· [${i.source_type}] ${(i.title||'').slice(0,50)}`).join('\n')}`)
+                  } catch (err) { alert('搜索失败: ' + err.message) }
                 }
               }} />
           </div>

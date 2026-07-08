@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { clearToken } from '../api/client'
+import { api } from '../api/client'
 
 export default function UserMenu({ user, onSettings, onLogout }) {
   const [open, setOpen] = useState(false)
@@ -13,6 +13,12 @@ export default function UserMenu({ user, onSettings, onLogout }) {
 
   const name = user?.display_name || user?.username || 'OP'
   const initials = name.slice(0, 2).toUpperCase()
+
+  const handleLogout = async () => {
+    await api.logout()
+    onLogout()
+    setOpen(false)
+  }
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -43,7 +49,7 @@ export default function UserMenu({ user, onSettings, onLogout }) {
           <button onClick={() => { onSettings(); setOpen(false) }} style={menuItem}>
             <span>⚙</span> API 设置
           </button>
-          <button onClick={() => { clearToken(); onLogout(); setOpen(false) }} style={menuItem}>
+          <button onClick={handleLogout} style={menuItem}>
             <span>↩</span> 退出登录
           </button>
         </div>

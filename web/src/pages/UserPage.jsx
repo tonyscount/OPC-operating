@@ -1,19 +1,17 @@
 import { useState, useEffect } from 'react'
+import { api } from '../api/client'
 
 export default function UserPage({ userId, onClose }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const token = () => localStorage.getItem('opc_token')
-  const hdr = () => ({ Authorization: `Bearer ${token()}` })
-
   useEffect(() => {
-    fetch(`/api/v1/discover/users/${userId}/business-card`, { headers: hdr() })
-      .then(r => r.json()).then(d => { setProfile(d); setLoading(false) })
+    api.getBusinessCard(userId)
+      .then(d => { setProfile(d); setLoading(false) })
   }, [userId])
 
   const follow = async () => {
-    await fetch(`/api/v1/social/users/${userId}/follow`, { method: 'POST', headers: hdr() })
+    await api.followUser(userId)
     setProfile(prev => ({ ...prev, is_following: true }))
   }
 
@@ -33,7 +31,7 @@ export default function UserPage({ userId, onClose }) {
             {profile?.is_following ? '已关注' : '+ 关注'}
           </button>
           <button onClick={async () => {
-            await fetch('/api/v1/social/friends/request', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` }, body: JSON.stringify({ friend_id: userId }) })
+            await api.sendFriendRequest(userId)
             alert('好友申请已发送')
           }} className="btn-secondary" style={{ fontSize: 12, padding: '4px 14px' }}>+好友</button>
         </div>
