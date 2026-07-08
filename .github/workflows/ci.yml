@@ -92,6 +92,7 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           JWT_SECRET_KEY: test-secret-do-not-use-in-production-32chars
           OPENAI_API_KEY: sk-test-placeholder
+          TESTING: "true"
         run: python -m pytest tests/ -v --tb=short
 
   # ═══════════════════════════════════════

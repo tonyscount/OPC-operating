@@ -64,11 +64,13 @@ async def register_endpoint(req: RegisterRequest, request: Request, db=Depends(g
     # 事件驱动: 新成员注册 → 自动生成欢迎内容
     try:
         import asyncio as _asyncio
-        _asyncio.create_task(_auto_welcome_new_member(
-            tenant_slug=req.tenant_slug,
-            username=req.username,
-            display_name=req.display_name or req.username,
-        ))
+        import os
+        if os.getenv("TESTING", "").lower() not in ("1", "true", "yes"):
+            _asyncio.create_task(_auto_welcome_new_member(
+                tenant_slug=req.tenant_slug,
+                username=req.username,
+                display_name=req.display_name or req.username,
+            ))
     except Exception:
         pass  # 欢迎生成失败不影响注册
 

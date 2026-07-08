@@ -23,10 +23,14 @@ X-RateLimit-* 响应头 (slowapi 自动注入):
     # 或者在 router 级别: 无需装饰器, 走 default_limits
 """
 
+import os
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.config import settings
+
+# 测试环境关闭限流
+_TESTING = os.getenv("TESTING", "").lower() in ("1", "true", "yes")
 
 
 # ============================================================
@@ -72,7 +76,7 @@ def _build_redis_storage_uri() -> str:
 limiter = Limiter(
     key_func=get_user_or_ip_key,
     storage_uri=_build_redis_storage_uri(),
-    default_limits=["200/minute"],     # 全局兜底: 所有未装饰端点
+    default_limits=["10000/minute"] if _TESTING else ["200/minute"],     # 测试环境放宽
     headers_enabled=True,              # 自动注入 X-RateLimit-* 头
     swallow_errors=True,               # Redis 挂了不让业务中断
 )

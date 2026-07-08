@@ -2,6 +2,10 @@
 
 import asyncio
 import os
+
+# 测试环境标记 — 必须在导入 app 模块前设置，关闭限流/日志等
+os.environ.setdefault("TESTING", "true")
+
 from typing import AsyncGenerator
 
 import pytest
