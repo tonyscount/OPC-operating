@@ -1,7 +1,7 @@
 """
 数据库连接与会话管理。
 
-- 异步 SQLAlchemy 2.0 引擎
+- 异步 SQLAlchemy 2.0 引擎 (惰性初始化，确保在正确的 event loop 上创建)
 - 依赖注入: get_db() 提供 AsyncSession
 - 租户过滤: before_cursor_execute 事件自动注入 tenant_id
 """
@@ -14,20 +14,58 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.config import settings
 
-# ========== 引擎 & 会话工厂 ==========
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    pool_size=settings.DB_POOL_SIZE,
-    max_overflow=settings.DB_MAX_OVERFLOW,
-    echo=settings.DB_ECHO,
-    pool_pre_ping=True,
-)
+# ========== 惰性引擎 & 会话工厂 ==========
+# 不在模块级别创建引擎，而是在首次访问时惰性初始化。
+# 这确保 create_async_engine 在正确的 event loop 上执行
+# (例如 pytest-asyncio 的 session-scoped loop)，避免跨 loop 错误。
 
-async_session_factory = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
+_engine = None
+_session_factory = None
+
+
+def _init_engine():
+    """惰性初始化引擎和会话工厂 (线程安全由 GIL 保证)"""
+    global _engine, _session_factory
+    if _engine is None:
+        _engine = create_async_engine(
+            settings.DATABASE_URL,
+            pool_size=settings.DB_POOL_SIZE,
+            max_overflow=settings.DB_MAX_OVERFLOW,
+            echo=settings.DB_ECHO,
+            pool_pre_ping=True,
+        )
+        _session_factory = async_sessionmaker(
+            _engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+        # 注册租户安全网事件监听器
+        event.listen(_engine.sync_engine, "before_cursor_execute", tenant_filter_check)
+    return _engine
+
+
+def _reset_engine():
+    """重置引擎 (仅在测试中使用，处理 engine.dispose() 后重新初始化)"""
+    global _engine, _session_factory
+    if _engine is not None:
+        _engine = None
+        _session_factory = None
+
+
+def __getattr__(name: str):
+    """
+    模块级惰性属性访问。
+    所有 `from app.core.database import engine` 和
+    `from app.core.database import async_session_factory` 都会透明地
+    触发惰性初始化，无需修改调用方代码。
+    """
+    if name == "engine":
+        return _init_engine()
+    if name == "async_session_factory":
+        _init_engine()
+        return _session_factory
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 # ========== 租户上下文 (ContextVar 协程安全) ==========
 current_tenant_id: ContextVar[str | None] = ContextVar("current_tenant_id", default=None)
@@ -46,7 +84,9 @@ def get_tenant_context() -> str | None:
 # ========== 依赖注入 ==========
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI 依赖: 获取数据库会话，请求结束时自动关闭"""
-    async with async_session_factory() as session:
+    # 惰性访问 session_factory，触发首次初始化
+    _init_engine()
+    async with _session_factory() as session:
         try:
             # 设置 PostgreSQL RLS 租户上下文
             tenant_id = get_tenant_context()
@@ -70,7 +110,6 @@ TENANT_AWARE_TABLES = {
 }
 
 
-@event.listens_for(engine.sync_engine, "before_cursor_execute")
 def tenant_filter_check(conn, cursor, statement, parameters, context, executemany):
     """
     安全网: 检查写操作是否可能跨租户。

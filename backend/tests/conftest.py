@@ -27,8 +27,22 @@ TEST_DATABASE_URL = os.getenv(
 pytestmark = None
 
 
+@pytest.fixture(scope="session")
+def event_loop():
+    """
+    创建 session 级别的事件循环，确保整个测试会话使用同一个 loop。
+
+    这解决了 SQLAlchemy async engine (及其 asyncpg 连接池) 与
+    pytest-asyncio 之间的事件循环不匹配问题。
+    所有 async fixture 和测试函数将共享此 loop。
+    """
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
+
+
 @pytest_asyncio.fixture(scope="session")
-async def engine():
+async def engine(event_loop):
     """创建测试引擎"""
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
     # 创建所有表
@@ -55,6 +69,10 @@ async def db(engine) -> AsyncGenerator[AsyncSession, None]:
 @pytest_asyncio.fixture
 async def client(db) -> AsyncGenerator[AsyncClient, None]:
     """FastAPI 测试客户端"""
+    # 重置模块级引擎 — 前一个测试的 lifespan shutdown 可能已将其 dispose
+    from app.core.database import _reset_engine
+    _reset_engine()
+
     app = create_app()
     app.dependency_overrides = {}  # 可在此覆盖依赖
 
