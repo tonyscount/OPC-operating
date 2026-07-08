@@ -149,7 +149,13 @@ def create_app() -> FastAPI:
         app.mount("/assets", StaticFiles(directory=dist_path / "assets"), name="assets")
         @app.get("/{full_path:path}")
         async def serve_spa(full_path: str):
-            """SPA fallback: 非 API 路由返回 index.html"""
+            """SPA fallback: 非 API/非静态资源路径返回 index.html"""
+            from fastapi.responses import JSONResponse
+
+            # API / 内部路径不应被 SPA 吞掉，返回 404
+            if full_path.startswith(("api/", "docs", "openapi.json", "redoc")):
+                return JSONResponse({"detail": "Not Found"}, status_code=404)
+
             file_path = dist_path / full_path
             if file_path.exists() and file_path.is_file():
                 return FileResponse(file_path)
