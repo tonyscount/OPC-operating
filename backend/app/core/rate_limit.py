@@ -87,33 +87,33 @@ limiter = Limiter(
 # ============================================================
 
 # ——— 认证 (防暴力破解) ———
-RATE_AUTH_LOGIN    = "10/minute"    # 登录: 每用户/IP 每分钟 10 次
-RATE_AUTH_REGISTER = "5/hour"       # 注册: 每 IP 每小时 5 次
-RATE_AUTH_REFRESH  = "30/minute"    # Token 刷新
+RATE_AUTH_LOGIN    = "10000/minute" if _TESTING else "10/minute"
+RATE_AUTH_REGISTER = "10000/minute" if _TESTING else "5/hour"
+RATE_AUTH_REFRESH  = "10000/minute" if _TESTING else "30/minute"
 
 # ——— 社交 写操作 (防刷) ———
-RATE_SOCIAL_CREATE_POST   = "20/minute"   # 发帖
-RATE_SOCIAL_COMMENT       = "30/minute"   # 评论/回复
-RATE_SOCIAL_LIKE          = "60/minute"   # 点赞/取消 (toggle 高并发)
-RATE_SOCIAL_FOLLOW        = "30/minute"   # 关注/取关
-RATE_SOCIAL_FRIEND_REQUEST = "20/minute"  # 好友申请
-RATE_SOCIAL_GREET          = "15/minute"  # 打招呼
+RATE_SOCIAL_CREATE_POST   = "10000/minute" if _TESTING else "20/minute"
+RATE_SOCIAL_COMMENT       = "10000/minute" if _TESTING else "30/minute"
+RATE_SOCIAL_LIKE          = "10000/minute" if _TESTING else "60/minute"
+RATE_SOCIAL_FOLLOW        = "10000/minute" if _TESTING else "30/minute"
+RATE_SOCIAL_FRIEND_REQUEST = "10000/minute" if _TESTING else "20/minute"
+RATE_SOCIAL_GREET          = "10000/minute" if _TESTING else "15/minute"
 
 # ——— 社交 读操作 ———
-RATE_SOCIAL_FEED   = "120/minute"   # 动态流
-RATE_SOCIAL_SEARCH = "30/minute"    # 搜索
+RATE_SOCIAL_FEED   = "10000/minute" if _TESTING else "120/minute"
+RATE_SOCIAL_SEARCH = "10000/minute" if _TESTING else "30/minute"
 
 # ——— 设备 ———
-RATE_DEVICE_REGISTER = "10/minute"  # 注册设备
-RATE_DEVICE_STATUS   = "30/minute"  # 状态更新 (心跳)
+RATE_DEVICE_REGISTER = "10000/minute" if _TESTING else "10/minute"
+RATE_DEVICE_STATUS   = "10000/minute" if _TESTING else "30/minute"
 
 # ——— Agent / AI ———
-RATE_AGENT_RUN = "20/minute"        # 执行智能体 (成本敏感)
+RATE_AGENT_RUN = "10000/minute" if _TESTING else "20/minute"
 
 # ——— 知识库 ———
-RATE_KNOWLEDGE_UPLOAD   = "30/minute"
-RATE_KNOWLEDGE_ASK       = "20/minute"   # RAG 问答 (LLM 成本)
+RATE_KNOWLEDGE_UPLOAD = "10000/minute" if _TESTING else "30/minute"
+RATE_KNOWLEDGE_ASK    = "10000/minute" if _TESTING else "20/minute"
 
 # ——— OA ———
-RATE_OA_APPLY    = "10/minute"      # 提交审批
-RATE_OA_APPROVE  = "30/minute"      # 审批操作
+RATE_OA_APPLY   = "10000/minute" if _TESTING else "10/minute"
+RATE_OA_APPROVE = "10000/minute" if _TESTING else "30/minute"

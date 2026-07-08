@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         else:
             logger.warning(w)
 
-    logger.info(f"🚀 {settings.APP_NAME} v{settings.APP_VERSION} starting...")
+    logger.info(f"[START] {settings.APP_NAME} v{settings.APP_VERSION} starting...")
     logger.info(f"   Environment: {settings.APP_ENV}")
     logger.info(f"   LLM Provider: {settings.LLM_PROVIDER}")
 
