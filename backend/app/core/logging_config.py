@@ -19,11 +19,40 @@
 """
 
 import logging
+import os as _os
 import sys
-from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
 from app.config import settings
+
+
+class WindowsSafeTimedRotatingFileHandler(TimedRotatingFileHandler):
+    """
+    TimedRotatingFileHandler 的 Windows 兼容版本。
+
+    标准库实现在 Windows 上调用 os.rename() 做日志轮转时，
+    可能因文件被其他进程锁定而抛出 PermissionError。
+    此版本捕获轮转失败，回退为直接在当前文件上 truncate 重写。
+    """
+
+    def doRollover(self):
+        try:
+            super().doRollover()
+        except (PermissionError, OSError):
+            # Windows: os.rename 失败时，关闭旧流后直接在原文件上重开
+            if self.stream:
+                self.stream.close()
+                self.stream = None
+            try:
+                _os.remove(self.baseFilename)
+            except OSError:
+                pass
+            # 延迟到下一次 emit 时自动创建新文件
+            sys.stderr.write(
+                f"[logging] Rotation failed for {self.baseFilename}, "
+                f"truncating instead\n"
+            )
 
 # ========== 日志格式 ==========
 
@@ -98,7 +127,7 @@ def setup_logging() -> None:
     log_dir = Path(settings.BASE_DIR) / "logs"
     log_dir.mkdir(exist_ok=True)
 
-    file_handler = TimedRotatingFileHandler(
+    file_handler = WindowsSafeTimedRotatingFileHandler(
         filename=log_dir / "app.log",
         when="H",
         interval=1,
@@ -110,7 +139,7 @@ def setup_logging() -> None:
     root_logger.addHandler(file_handler)
 
     # ===== 3. 错误独立文件 =====
-    error_handler = TimedRotatingFileHandler(
+    error_handler = WindowsSafeTimedRotatingFileHandler(
         filename=log_dir / "error.log",
         when="D",
         interval=1,
