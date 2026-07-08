@@ -1,10 +1,18 @@
 # OPC Platform — 架构文档
 
-> 最后更新: 2026-06-27
+> 最后更新: 2026-07-08
+
+## 定位
+
+**"微信 + Soul" 为 OPC 主理人服务，80% ToB，20% ToC。**
+
+一人公司经营操作系统。六大板块：社交网络 / 知识库 / AI Agent / Skill 系统 / 设备运维 / 交易市场。
+
+竞品分析详见 [competitive-analysis.md](./competitive-analysis.md)。
 
 ## 概述
 
-OPC Platform 是一个集人员社交、管理、运营、交易于一体的移动端平台。
+OPC Platform 是一个集人员社交、管理、运营、交易于一体的综合平台，提供 Web 端和 Flutter 移动端。
 
 ## 技术栈
 
