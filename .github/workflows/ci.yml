@@ -86,14 +86,20 @@ jobs:
           python -m alembic upgrade head
           echo "Migrations OK"
 
-      - name: Run tests
+      - name: Run tests (with coverage)
         env:
           DATABASE_URL: postgresql+asyncpg://opc_user:opc_test_password@localhost:5432/opc_test
           REDIS_URL: redis://localhost:6379/0
           JWT_SECRET_KEY: test-secret-do-not-use-in-production-32chars
           OPENAI_API_KEY: sk-test-placeholder
           TESTING: "true"
-        run: python -m pytest tests/ -v --tb=short
+        run: |
+          pip install pytest-cov
+          python -m pytest tests/ -v --tb=short \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-report=html \
+            --cov-fail-under=60
 
   # ═══════════════════════════════════════
   # Job 3: API 集成冒烟测试
