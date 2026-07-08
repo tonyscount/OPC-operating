@@ -28,6 +28,7 @@ slowapi>=0.1.9
 
 # ========== AI / LLM ==========
 openai>=1.50.0
+fastembed>=0.4.0           # 本地 BGE embedding (无外部 API 依赖)
 langgraph>=0.2.0
 langchain>=0.3.0
 langchain-openai>=0.2.0

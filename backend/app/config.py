@@ -47,8 +47,14 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     LLM_MODEL: str = "gpt-4o"
+
+    # ========== Embedding (独立配置，可选回退到主 LLM 配置) ==========
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     EMBEDDING_DIMENSIONS: int = 1536
+    EMBEDDING_API_KEY: str = ""        # 为空则回退到 OPENAI_API_KEY
+    EMBEDDING_BASE_URL: str = ""       # 为空则回退到 OPENAI_BASE_URL
+    # 本地 embedding: 当 EMBEDDING_API_KEY 和 OPENAI_API_KEY 都为空时自动启用
+    LOCAL_EMBEDDING_MODEL: str = "BAAI/bge-small-zh-v1.5"
 
     # ========== 搜索 ==========
     SEARCH_API_KEY: str = ""
@@ -58,6 +64,16 @@ class Settings(BaseSettings):
     FEISHU_WEBHOOK_URL: str = ""
 
     # ========== 路径 ==========
+    @property
+    def EMBEDDING_EFFECTIVE_KEY(self) -> str:
+        """Embedding 实际使用的 API Key (优先独立配置，回退主配置)"""
+        return self.EMBEDDING_API_KEY or self.OPENAI_API_KEY
+
+    @property
+    def EMBEDDING_EFFECTIVE_URL(self) -> str:
+        """Embedding 实际使用的 Base URL (优先独立配置，回退主配置)"""
+        return self.EMBEDDING_BASE_URL or self.OPENAI_BASE_URL
+
     @property
     def BASE_DIR(self) -> Path:
         return Path(__file__).resolve().parent.parent
@@ -84,7 +100,12 @@ class Settings(BaseSettings):
 
         # LLM API Key
         if self.LLM_PROVIDER != "none" and self.OPENAI_API_KEY in ("", "sk-your-key-here", "sk-your-api-key-here"):
-            warnings.append("WARNING: OPENAI_API_KEY 未配置，RAG/Agent 功能将不可用")
+            warnings.append("WARNING: OPENAI_API_KEY 未配置，Agent 功能将不可用")
+
+        # Embedding: 检查是否有可用的 embedding 端点
+        emb_key = self.EMBEDDING_API_KEY or self.OPENAI_API_KEY
+        if emb_key in ("", "sk-your-key-here"):
+            warnings.append("INFO: 未配置远程 Embedding API，将使用本地 BGE 模型")
 
         # CORS
         if "*" in self.CORS_ORIGINS and self.APP_ENV == "production":
