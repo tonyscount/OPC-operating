@@ -125,13 +125,16 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def global_exception_handler(request: Request, exc: Exception):
         rid = getattr(request.state, "request_id", None)
         logger.exception(f"[{rid}] Unhandled exception: {exc}")
+        import os
+        is_testing = os.getenv("TESTING", "").lower() in ("1", "true", "yes")
         return JSONResponse(
             status_code=500,
             content={
                 "error": ErrorResponse(
                     code="INTERNAL_ERROR",
-                    message="服务器内部错误",
+                    message=f"服务器内部错误: {exc}" if is_testing else "服务器内部错误",
                     request_id=rid,
+                    details=str(exc.__cause__) if is_testing else None,
                 ).model_dump()
             },
         )
