@@ -133,6 +133,7 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://opc_user:opc_test_password@localhost:5432/opc_test
           DATABASE_URL_SYNC: postgresql://opc_user:opc_test_password@localhost:5432/opc_test
+          TESTING: "true"
         run: python -m alembic upgrade head
 
       - name: Start server
@@ -142,6 +143,7 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           JWT_SECRET_KEY: test-secret-do-not-use-in-production-32chars
           OPENAI_API_KEY: sk-test-placeholder
+          TESTING: "true"
         run: |
           python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           sleep 5
