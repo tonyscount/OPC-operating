@@ -49,6 +49,7 @@ logs/
 .coverage
 htmlcov/
 .pytest_cache/
+chroma_data/
 lenny-skills-main/
 pgvector-src/
 ppt-master-main/

@@ -1,1 +1,0 @@
-{"chroma:document":"OPC 平台是一个集人员社交、管理、运营、交易于一体的移动端平台。\n\n它支持多租户数据隔离、内置知识库 RAG 问答、多智能体架构以及 Skill 系统。\n\n技术栈包括: Python FastAPI、PostgreSQL + pgvector、Redis、Celery。","document_id":"14e50e5d-ac4b-416e-87d8-0bb892943388","document_title":"OPC 平台介绍","chunk_index"
