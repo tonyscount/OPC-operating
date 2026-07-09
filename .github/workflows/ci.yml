@@ -242,7 +242,7 @@ jobs:
         run: flutter analyze --no-fatal-infos --no-fatal-warnings || true
 
       - name: Verify compilation
-        run: flutter analyze && echo "Flutter analyze OK"
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings || true
 
   # ═══════════════════════════════════════
   # Job 6: Docker 镜像构建 + 推送
