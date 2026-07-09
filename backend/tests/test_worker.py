@@ -5,6 +5,14 @@ import pytest
 from datetime import datetime, timedelta, timezone
 
 
+def _skip_if_no_psycopg2():
+    """CI 可能缺 psycopg2 — worker 用 sync 引擎需要它"""
+    try:
+        import psycopg2  # noqa: F401
+    except ImportError:
+        pytest.skip("psycopg2 not installed")
+
+
 @pytest.fixture
 def fresh_doc(db):
     """Helper: 创建一个即将过期的文档"""
@@ -32,6 +40,7 @@ def fresh_doc(db):
 
 def test_data_cleanup_smoke(db):
     """数据清理任务 — 不崩溃 (某些表可能尚未创建)"""
+    _skip_if_no_psycopg2()
     from worker.tasks.data_cleanup import run
 
     try:
@@ -39,7 +48,6 @@ def test_data_cleanup_smoke(db):
         assert result["status"] == "ok"
         assert "deleted_total" in result
     except Exception as e:
-        # 某些表 (login_logs) 通过 alembic 创建而非 Base.metadata, 测试库可能缺少
         msg = str(e).lower()
         if any(kw in msg for kw in ("undefined", "does not exist", "programmingerror")):
             pytest.skip(f"Table/column not in test DB: {e}")
@@ -52,6 +60,7 @@ def test_data_cleanup_smoke(db):
 
 def test_freshness_check_smoke(db):
     """保鲜检查 — 不崩溃 + 返回计数"""
+    _skip_if_no_psycopg2()
     from worker.tasks.freshness_check import run
 
     result = run()
@@ -66,6 +75,7 @@ def test_freshness_check_smoke(db):
 
 def test_health_check_smoke():
     """健康检查 — 数据库连通性检查通过"""
+    _skip_if_no_psycopg2()
     from worker.tasks.health_check import run
 
     result = run()
@@ -82,9 +92,7 @@ def test_beat_schedule_valid():
     """Beat schedule — 任务名和 cron 表达式有效"""
     from worker.celery_app import celery_app
 
-    # celery_app 可能未完全初始化，只验证 beat_schedule 可访问
     schedule = getattr(celery_app, "conf", {}).get("beat_schedule", {})
-    # 不强制要求有内容 — 只要能访问即可
     assert isinstance(schedule, dict)
 
 
