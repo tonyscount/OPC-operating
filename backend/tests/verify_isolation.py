@@ -75,10 +75,10 @@ print("预期测试结果 (启动服务器后执行)")
 print("=" * 60)
 print("""
   1. POST /auth/register (user_a, tenant='xa-opc')
-     -> token_A = "eyJ..."
+     -> token_A = "JWT_TOKEN_PLACEHOLDER"
 
   2. POST /auth/register (user_b, tenant='cd-opc')
-     -> token_B = "eyJ..."
+     -> token_B = "JWT_TOKEN_PLACEHOLDER"
 
   3. POST /social/posts (token_A, content='西安OPC帖子')
      -> post_id = xxx (tenant_id = tenant_A的UUID)

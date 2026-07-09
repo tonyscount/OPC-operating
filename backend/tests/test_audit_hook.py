@@ -135,7 +135,7 @@ async def test_audit_api_key_leak():
     auditor = DeliveryAuditor()
 
     result = await auditor.audit(
-        output="配置: OPENAI_API_KEY=sk-abc123xyz",
+        output="配置: OPENAI_API_KEY=test-placeholder-key-not-real",
         steps_executed=[],
         errors=[],
     )
