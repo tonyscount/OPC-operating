@@ -11,7 +11,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -35,6 +35,8 @@ class SocialPost(TenantBase):
     visibility: Mapped[str] = mapped_column(
         String(20), default="public", comment="public/org_only/private"
     )
+    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False, comment="置顶")
+    is_essence: Mapped[bool] = mapped_column(Boolean, default=False, comment="精华")
     view_count: Mapped[int] = mapped_column(default=0)
     like_count: Mapped[int] = mapped_column(default=0)
     comment_count: Mapped[int] = mapped_column(default=0)

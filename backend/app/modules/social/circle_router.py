@@ -216,7 +216,78 @@ async def circle_feed(
     items = [{
         "id": str(p.id), "content": p.content,
         "author_id": str(p.author_id),
+        "is_pinned": p.is_pinned, "is_essence": p.is_essence,
         "like_count": p.like_count, "comment_count": p.comment_count,
         "view_count": p.view_count, "created_at": p.created_at.isoformat(),
     } for p in posts]
     return {"items": items, "total": total or 0, "page": page, "page_size": page_size}
+
+
+# ============================================================
+# 圈子管理 (owner/admin)
+# ============================================================
+
+async def _require_circle_admin(db, circle_id: uuid.UUID, user_id: uuid.UUID):
+    """校验用户是圈子 owner/admin，返回 membership"""
+    membership = await db.scalar(
+        select(CircleMember).where(
+            CircleMember.circle_id == circle_id,
+            CircleMember.user_id == user_id,
+            CircleMember.is_deleted == False,
+        )
+    )
+    if not membership or membership.role not in ("owner", "admin"):
+        from app.core.exceptions import ForbiddenException
+        raise ForbiddenException("需要圈子管理员权限")
+    return membership
+
+
+@router.post("/circles/{circle_id}/posts/{post_id}/pin")
+async def toggle_pin(
+    circle_id: uuid.UUID,
+    post_id: uuid.UUID,
+    current_user: TokenPayload = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """置顶/取消置顶"""
+    await _require_circle_admin(db, circle_id, uuid.UUID(current_user.sub))
+    post = await db.get(SocialPost, post_id)
+    if not post or post.circle_id != circle_id:
+        raise NotFoundException("帖子不存在")
+    post.is_pinned = not post.is_pinned
+    await db.commit()
+    return {"post_id": str(post_id), "is_pinned": post.is_pinned}
+
+
+@router.post("/circles/{circle_id}/posts/{post_id}/essence")
+async def toggle_essence(
+    circle_id: uuid.UUID,
+    post_id: uuid.UUID,
+    current_user: TokenPayload = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """加精/取消加精"""
+    await _require_circle_admin(db, circle_id, uuid.UUID(current_user.sub))
+    post = await db.get(SocialPost, post_id)
+    if not post or post.circle_id != circle_id:
+        raise NotFoundException("帖子不存在")
+    post.is_essence = not post.is_essence
+    await db.commit()
+    return {"post_id": str(post_id), "is_essence": post.is_essence}
+
+
+@router.delete("/circles/{circle_id}/posts/{post_id}")
+async def delete_circle_post(
+    circle_id: uuid.UUID,
+    post_id: uuid.UUID,
+    current_user: TokenPayload = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """删除圈子帖子 (软删除)"""
+    await _require_circle_admin(db, circle_id, uuid.UUID(current_user.sub))
+    post = await db.get(SocialPost, post_id)
+    if not post or post.circle_id != circle_id:
+        raise NotFoundException("帖子不存在")
+    post.is_deleted = True
+    await db.commit()
+    return {"post_id": str(post_id), "deleted": True}

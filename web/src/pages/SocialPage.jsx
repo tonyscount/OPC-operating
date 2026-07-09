@@ -264,6 +264,10 @@ export default function SocialPage({ isMobile }) {
                 </div>
               ) : null}
             </div>
+            <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+              {p.is_pinned && <span style={{ background: '#FEF3C7', color: '#92400E', padding: '1px 6px', borderRadius: 4, fontSize: 11, fontWeight: 600 }}>📌 置顶</span>}
+              {p.is_essence && <span style={{ background: '#EDE9FE', color: '#6D28D9', padding: '1px 6px', borderRadius: 4, fontSize: 11, fontWeight: 600 }}>✨ 精华</span>}
+            </div>
             <p style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text)', marginBottom: 14 }} dangerouslySetInnerHTML={{ __html: parseContent(p.content) }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, borderTop: '1px solid var(--border-subtle)', paddingTop: 12 }}>
               <button onClick={() => likePost(p.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: p.is_liked ? '#DC2626' : 'var(--text-3)', fontWeight: 500, fontFamily: 'var(--font)', padding: '4px 8px', borderRadius: 6 }}>
