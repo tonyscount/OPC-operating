@@ -218,7 +218,37 @@ jobs:
           test -f dist/assets/*.js && echo "JS bundle OK" || exit 1
 
   # ═══════════════════════════════════════
-  # Job 5: Docker 镜像构建 + 推送
+  # Job 5: Flutter 移动端构建验证
+  # ═══════════════════════════════════════
+  build-flutter:
+    name: Build Flutter App
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.29.0"
+          channel: "stable"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings || true
+
+      - name: Build APK (debug)
+        run: flutter build apk --debug
+
+      - name: Verify APK
+        run: |
+          test -f build/app/outputs/flutter-apk/app-debug.apk && echo "APK build OK" || exit 1
+
+  # ═══════════════════════════════════════
+  # Job 6: Docker 镜像构建 + 推送
   # ═══════════════════════════════════════
   build-api:
     name: Build & Push API Image

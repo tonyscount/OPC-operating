@@ -7,10 +7,14 @@ import os
 os.environ.setdefault("TESTING", "true")
 
 # 强制使用 127.0.0.1 (避免 Windows ProactorEventLoop 的 localhost DNS 解析问题)
-# 同时也确保 app 内 settings.DATABASE_URL 使用测试库 opc_test
+# 同时也确保 app 内 settings 使用测试库 opc_test
 os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+asyncpg://opc_user:opc_dev_password@127.0.0.1:5432/opc_test",
+)
+os.environ.setdefault(
+    "DATABASE_URL_SYNC",
+    "postgresql://opc_user:opc_dev_password@127.0.0.1:5432/opc_test",
 )
 
 # 触发所有模型注册到 Base.metadata (必须在 create_all 之前)
