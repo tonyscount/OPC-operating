@@ -83,7 +83,7 @@ async def test_list_agents_api(client: AsyncClient, auth: dict):
     assert resp.status_code == 200
     data = resp.json()
     assert "agents" in data
-    assert len(data["agents"]) >= 9  # 分析师, 客服助手, 审核员, 评审员 + 5 new
+    assert len(data["agents"]) >= 14  # 14 built-in agents
 
 
 @pytest.mark.asyncio
