@@ -11,18 +11,42 @@ class _AgentPageState extends State<AgentPage> {
   final _msgCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   List<Map<String, String>> _messages = [];
+  List<Map<String, String>> _agents = [];
+  String? _selectedAgent;
   bool _loading = false;
-  String _selectedAgent = 'analyst';
-  final _agents = [
-    {'name': 'analyst', 'label': '分析师'},
-    {'name': 'support_agent', 'label': '支持'},
-    {'name': 'reviewer', 'label': '审查'},
-    {'name': 'judge', 'label': '裁判'},
-  ];
+  bool _agentsLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAgents();
+  }
+
+  Future<void> _fetchAgents() async {
+    try {
+      final resp = await ApiClient.instance.get('/agent/list');
+      final list = (resp.data?['agents'] as List?) ?? [];
+      setState(() {
+        _agents = list.map<Map<String, String>>((a) {
+          return {
+            'name': a['name']?.toString() ?? '',
+            'emoji': a['emoji']?.toString() ?? '🤖',
+            'desc': a['description']?.toString() ?? '',
+          };
+        }).toList();
+        _agentsLoading = false;
+        if (_agents.isNotEmpty && _selectedAgent == null) {
+          _selectedAgent = _agents.first['name'];
+        }
+      });
+    } catch (_) {
+      setState(() => _agentsLoading = false);
+    }
+  }
 
   Future<void> _send() async {
     final text = _msgCtrl.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _selectedAgent == null) return;
 
     setState(() {
       _messages.add({'role': 'user', 'content': text});
@@ -62,39 +86,88 @@ class _AgentPageState extends State<AgentPage> {
   }
 
   @override
+  void dispose() {
+    _msgCtrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final current = _agents.isNotEmpty && _selectedAgent != null
+        ? _agents.firstWhere((a) => a['name'] == _selectedAgent,
+            orElse: () => _agents.first)
+        : null;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0B1120),
       body: SafeArea(
         child: Column(
           children: [
-            // Header + agent selector
+            // Header + agent selector (horizontally scrollable)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('AI Agent',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w700)),
-                  const SizedBox(width: 12),
-                  ..._agents.map((a) => Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: ChoiceChip(
-                          label: Text(a['label']!,
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: _selectedAgent == a['name']
-                                      ? Colors.black
-                                      : Colors.white70)),
-                          selected: _selectedAgent == a['name'],
-                          selectedColor: const Color(0xFF00D4FF),
-                          onSelected: (_) =>
-                              setState(() => _selectedAgent = a['name']!),
-                        ),
-                      )),
+                  Row(
+                    children: [
+                      const Text('AI Agent',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w700)),
+                      const SizedBox(width: 8),
+                      Text('${_agents.length} 个可用',
+                          style: const TextStyle(
+                              fontSize: 11, color: Colors.white38)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 34,
+                    child: _agentsLoading
+                        ? const Text('加载中...',
+                            style:
+                                TextStyle(fontSize: 12, color: Colors.white24))
+                        : ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _agents.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 4),
+                            itemBuilder: (_, i) {
+                              final a = _agents[i];
+                              final selected = _selectedAgent == a['name'];
+                              return ChoiceChip(
+                                label: Text(
+                                  '${a['emoji']} ${a['name']}',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: selected
+                                          ? Colors.black
+                                          : Colors.white70),
+                                ),
+                                selected: selected,
+                                selectedColor: const Color(0xFF00D4FF),
+                                backgroundColor: const Color(0xFF1E293B),
+                                side: BorderSide.none,
+                                onSelected: (_) =>
+                                    setState(() => _selectedAgent = a['name']),
+                              );
+                            },
+                          ),
+                  ),
                 ],
               ),
             ),
+            // Current agent description
+            if (current != null && (current['desc']?.isNotEmpty ?? false))
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                child: Text(current['desc']!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        const TextStyle(fontSize: 11, color: Colors.white38)),
+              ),
             const Divider(height: 1, color: Color(0xFF1E293B)),
             // Chat
             Expanded(
@@ -123,21 +196,22 @@ class _AgentPageState extends State<AgentPage> {
                   final m = _messages[i];
                   final isUser = m['role'] == 'user';
                   return Align(
-                    alignment:
-                        isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    alignment: isUser
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
                     child: Container(
                       constraints: const BoxConstraints(maxWidth: 280),
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: isUser
-                            ? const Color(0xFF00D4FF).withOpacity(0.15)
+                            ? const Color(0xFF00D4FF).withValues(alpha: 0.15)
                             : const Color(0xFF1E293B),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(m['content'] ?? '',
-                          style: const TextStyle(
-                              fontSize: 14, height: 1.5)),
+                          style:
+                              const TextStyle(fontSize: 14, height: 1.5)),
                     ),
                   );
                 },
@@ -151,10 +225,12 @@ class _AgentPageState extends State<AgentPage> {
                   Expanded(
                     child: TextField(
                       controller: _msgCtrl,
-                      decoration: const InputDecoration(
-                        hintText: '输入消息...',
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(
+                      decoration: InputDecoration(
+                        hintText: current != null
+                            ? '向 ${current['name']} 提问...'
+                            : '输入消息...',
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 10),
                       ),
                       onSubmitted: (_) => _send(),

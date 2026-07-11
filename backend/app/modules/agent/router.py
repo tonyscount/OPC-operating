@@ -37,6 +37,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="分析师",
+        emoji="📊",
         description="【什么时候用】想看社群数据怎么样、哪里出了问题、该搞什么活动——找分析师。它能查数据、出报告、写活动方案。",
         role_prompt="""# 社群运营分析师 · 📊
 
@@ -117,6 +118,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="客服助手",
+        emoji="🎧",
         description="【什么时候用】平台怎么用、遇到问题了、找不到功能——找客服助手。它查帮助文档给你答案，解决不了会帮你转人工。",
         role_prompt="""# 客服助手 · 🎧
 
@@ -181,6 +183,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="审核员",
+        emoji="🛡️",
         description="【什么时候用】有用户发了帖子/评论需要审核？让审核员来。它会逐条检查合规性，给出通过/修改/拒绝的建议和具体理由。",
         role_prompt="""# 内容审核员 · 🛡️
 
@@ -264,6 +267,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="评审员",
+        emoji="⚖️",
         description="【什么时候用】多个 Agent 给出了不同意见，需要一个裁判来综合分析、找共识、给结论——找评审员。",
         role_prompt="""# 综合评审员 · ⚖️
 
@@ -324,6 +328,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="架构师",
+        emoji="🏗️",
         description="【什么时候用】要设计新系统、选技术方案、优化数据库、做安全合规——找架构师。给出可落地的架构方案，不炫技。",
         role_prompt="""# 后端架构师 · 🏗️
 
@@ -382,6 +387,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="代码审查员",
+        emoji="👁️",
         description="【什么时候用】代码写完了不敢合？贴过来让审查员看看。按安全→正确→可维护→性能分级审，给出具体修改方案。",
         role_prompt="""# 代码审查员 · 👁️
 
@@ -443,6 +449,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="运维工程师",
+        emoji="⚙️",
         description="【什么时候用】部署老出问题、想搭 CI/CD、上云不知道怎么选、监控告警一团糟——找运维工程师。从 Docker 到 K8s 到国内云。",
         role_prompt="""# DevOps 自动化工程师 · ⚙️
 
@@ -499,6 +506,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="内容创作者",
+        emoji="✍️",
         description="【什么时候用】公众号没人看、抖音不知道怎么拍、小红书笔记写不出来——找内容创作者。公众号/抖音/小红书/B站/知乎 全平台内容策略。",
         role_prompt="""# 内容创作者 · ✍️
 
@@ -561,6 +569,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="产品经理",
+        emoji="🧭",
         description="【什么时候用】有想法但不知道怎么落地、需求评审要写 PRD、路线图排不出来——找产品经理。帮你把想法变成可执行的产品方案。",
         role_prompt="""# 产品经理 · 🧭
 
@@ -619,6 +628,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="安全工程师",
+        emoji="🗡️",
         description="【什么时候用】担心系统有漏洞、要做渗透测试、等保合规不知道怎么过——找安全工程师。像攻击者一样思考，为防御者工作。",
         role_prompt="""# 安全工程师 · 🗡️
 
@@ -676,6 +686,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="SEO优化师",
+        emoji="🔎",
         description="【什么时候用】网站没流量、百度搜不到、关键词排名上不去——找 SEO 优化师。技术+内容+外链三管齐下，百度 Google 都懂。",
         role_prompt="""# SEO 优化师 · 🔎
 
@@ -734,6 +745,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="项目经理",
+        emoji="📋",
         description="【什么时候用】需求一堆不知道怎么排期、项目进度一团乱、跨部门协调头疼——找项目经理。把模糊需求变成可执行计划，把混乱变成可控。",
         role_prompt="""# 项目经理 · 📋
 
@@ -790,6 +802,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="财务分析师",
+        emoji="💰",
         description="【什么时候用】看不懂报表、利润降了不知道原因、想做预算不知道从哪下手——找财务分析师。把财务数据变成商业决策。",
         role_prompt="""# 财务分析师 · 💰
 
@@ -847,6 +860,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="商业策略师",
+        emoji="♟️",
         description="【什么时候用】想进入新市场、看不清竞争格局、战略方向拿不准——找商业策略师。帮忙分析行业、设计战略、评估可行性。",
         role_prompt="""# 商业策略师 · ♟️
 
@@ -904,6 +918,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="数据分析师",
+        emoji="📐",
         description="【什么时候用】GMV 降了不知道为什么、要做用户画像、想搭指标体系——找数据分析师。从取数到洞察到建议一条龙。",
         role_prompt="""# 数据分析师 · 📐
 
@@ -961,6 +976,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="UX研究员",
+        emoji="🔬",
         description="【什么时候用】不知道用户为什么流失、想验证设计是否好用、要做用户画像和旅程图——找 UX 研究员。用真实用户研究驱动设计决策。",
         role_prompt="""# UX 研究员 · 🔬
 
@@ -1016,6 +1032,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="测试工程师",
+        emoji="🎭",
         description="【什么时候用】新功能上线怕 bug、要写自动化测试、测试覆盖率不够——找测试工程师。保证质量不让 bug 逃逸到线上。",
         role_prompt="""# 测试工程师 · 🎭
 
@@ -1073,6 +1090,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="客户顾问",
+        emoji="🗺️",
         description="【什么时候用】客户要流失了、续约不知道怎么谈、想做大客户收入——找客户顾问。深耕客户关系，把满意变成续约和增购。",
         role_prompt="""# 客户顾问 · 🗺️
 
@@ -1129,6 +1147,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="招聘专员",
+        emoji="🎯",
         description="【什么时候用】招不到人、JD 没人投、面试不知道怎么面、offer 谈不拢——找招聘专员。从 JD 到入职全流程帮你搞定。",
         role_prompt="""# 招聘专员 · 🎯
 
@@ -1189,6 +1208,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="法务顾问",
+        emoji="⚖️",
         description="【什么时候用】要签合同了不确定有没有坑、条款看不懂、不知道合规不合规——找法务顾问。第一轮审查帮你找出所有风险点。",
         role_prompt="""# 法务顾问 · ⚖️
 
@@ -1237,6 +1257,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="供应链专家",
+        emoji="🔗",
         description="【什么时候用】采购成本高、供应商不好管、库存积压或缺货、想优化供应链——找供应链专家。扎根中国制造业，懂 1688、产业集群。",
         role_prompt="""# 供应链专家 · 🔗
 
@@ -1287,6 +1308,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="AI工程师",
+        emoji="🤖",
         description="【什么时候用】想用 AI 但不知道怎么落地、要做 RAG/Agent、模型效果不好——找 AI 工程师。从选型到部署到监控全流程。",
         role_prompt="""# AI 工程师 · 🤖
 
@@ -1341,6 +1363,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="企业培训师",
+        emoji="📚",
         description="【什么时候用】员工能力跟不上、想搭培训体系、不知道怎么设计课程——找企业培训师。从需求诊断到课程开发到效果评估一条龙。",
         role_prompt="""# 企业培训师 · 📚
 
@@ -1393,6 +1416,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="前端工程师",
+        emoji="🖥️",
         description="【什么时候用】要做页面/小程序、前端性能差、要做组件库——找前端工程师。React/Vue/小程序/浏览器兼容全搞定。",
         role_prompt="""# 前端工程师 · 🖥️
 

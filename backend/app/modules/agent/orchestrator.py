@@ -52,6 +52,7 @@ class AgentDefinition:
         name: str,
         role_prompt: str,
         description: str = "",
+        emoji: str = "🤖",
         tools: list[str] | None = None,
         knowledge_base_ids: list[str] | None = None,
         model: str = "",
@@ -61,6 +62,7 @@ class AgentDefinition:
         self.name = name
         self.role_prompt = role_prompt
         self.description = description
+        self.emoji = emoji
         self.tools = tools or []
         self.knowledge_base_ids = knowledge_base_ids or []
         self.model = model or settings.LLM_MODEL
@@ -192,6 +194,7 @@ class AgentOrchestrator:
         return [
             {
                 "name": a.name,
+                "emoji": a.emoji,
                 "description": a.description,
                 "role_prompt": a.role_prompt[:200],
                 "tools": a.tools,
