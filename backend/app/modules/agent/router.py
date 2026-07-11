@@ -36,7 +36,7 @@ def _register_builtin_agents():
     # 分析师 Agent · 📊 — OPC Agent 2.0 内核
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
-        name="analyst",
+        name="分析师",
         role_prompt="""# 社群运营分析师 · 📊
 
 ## 你是谁
@@ -115,7 +115,7 @@ def _register_builtin_agents():
     # 客服 Agent · 🎧 — OPC Agent 2.0 内核
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
-        name="support_agent",
+        name="客服助手",
         role_prompt="""# 客服助手 · 🎧
 
 ## 你是谁
@@ -178,7 +178,7 @@ def _register_builtin_agents():
     # 审核 Agent · 🛡️ — OPC Agent 2.0 内核
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
-        name="reviewer",
+        name="审核员",
         role_prompt="""# 内容审核员 · 🛡️
 
 ## 你是谁
@@ -260,7 +260,7 @@ def _register_builtin_agents():
     # 评审 Agent · ⚖️ — OPC Agent 2.0 内核 (Debate 模式裁判)
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
-        name="judge",
+        name="评审员",
         role_prompt="""# 综合评审员 · ⚖️
 
 ## 你是谁
@@ -319,7 +319,7 @@ def _register_builtin_agents():
     # 后端架构师 · 🏗️ — OPC Agent 2.0
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
-        name="backend-architect",
+        name="架构师",
         role_prompt="""# 后端架构师 · 🏗️
 
 ## 你是谁
@@ -376,7 +376,7 @@ def _register_builtin_agents():
     # 代码审查员 · 👁️ — OPC Agent 2.0
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
-        name="code-reviewer",
+        name="代码审查员",
         role_prompt="""# 代码审查员 · 👁️
 
 ## 你是谁
@@ -436,7 +436,7 @@ def _register_builtin_agents():
     # DevOps 自动化工程师 · ⚙️ — OPC Agent 2.0
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
-        name="devops-automator",
+        name="运维工程师",
         role_prompt="""# DevOps 自动化工程师 · ⚙️
 
 ## 你是谁
@@ -491,7 +491,7 @@ def _register_builtin_agents():
     # 内容创作者 · ✍️ — OPC Agent 2.0
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
-        name="content-creator",
+        name="内容创作者",
         role_prompt="""# 内容创作者 · ✍️
 
 ## 你是谁
@@ -552,7 +552,7 @@ def _register_builtin_agents():
     # 产品经理 · 🧭 — OPC Agent 2.0
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
-        name="product-manager",
+        name="产品经理",
         role_prompt="""# 产品经理 · 🧭
 
 ## 你是谁
@@ -714,13 +714,13 @@ async def run_agent(
         )
 
     elif mode == "router":
-        candidates = context.get("candidates", ["analyst", "support_agent", "reviewer"])
+        candidates = context.get("candidates", ["分析师", "客服助手", "审核员"])
         result = await orchestrator.run_router(
             req.message, candidates, context,
         )
 
     elif mode == "debate":
-        agent_names = context.get("agent_names", ["analyst", "reviewer", "support_agent"])
+        agent_names = context.get("agent_names", ["分析师", "审核员", "客服助手"])
         result = await orchestrator.run_debate(
             agent_names, req.message, context,
         )

@@ -39,8 +39,8 @@ def test_list_agents():
     agents = orchestrator.list_agents()
     assert len(agents) > 0
     names = [a["name"] for a in agents]
-    assert "analyst" in names
-    assert "support_agent" in names
+    assert "分析师" in names
+    assert "客服助手" in names
 
 
 @pytest.mark.asyncio
@@ -83,7 +83,7 @@ async def test_list_agents_api(client: AsyncClient, auth: dict):
     assert resp.status_code == 200
     data = resp.json()
     assert "agents" in data
-    assert len(data["agents"]) >= 4  # analyst, support_agent, reviewer, judge
+    assert len(data["agents"]) >= 9  # 分析师, 客服助手, 审核员, 评审员 + 5 new
 
 
 @pytest.mark.asyncio
@@ -105,7 +105,7 @@ async def test_register_agent_api(client: AsyncClient, auth: dict):
 async def test_run_single_api(client: AsyncClient, auth: dict):
     """API: 执行 Single Agent"""
     resp = await client.post("/api/v1/agent/run", json={
-        "agent_name": "analyst",
+        "agent_name": "分析师",
         "mode": "single",
         "message": "OPC 平台是什么？",
     }, headers=auth)
