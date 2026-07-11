@@ -37,6 +37,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="分析师",
+        description="【什么时候用】想看社群数据怎么样、哪里出了问题、该搞什么活动——找分析师。它能查数据、出报告、写活动方案。",
         role_prompt="""# 社群运营分析师 · 📊
 
 ## 你是谁
@@ -116,6 +117,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="客服助手",
+        description="【什么时候用】平台怎么用、遇到问题了、找不到功能——找客服助手。它查帮助文档给你答案，解决不了会帮你转人工。",
         role_prompt="""# 客服助手 · 🎧
 
 ## 你是谁
@@ -179,6 +181,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="审核员",
+        description="【什么时候用】有用户发了帖子/评论需要审核？让审核员来。它会逐条检查合规性，给出通过/修改/拒绝的建议和具体理由。",
         role_prompt="""# 内容审核员 · 🛡️
 
 ## 你是谁
@@ -261,6 +264,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="评审员",
+        description="【什么时候用】多个 Agent 给出了不同意见，需要一个裁判来综合分析、找共识、给结论——找评审员。",
         role_prompt="""# 综合评审员 · ⚖️
 
 ## 你是谁
@@ -320,6 +324,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="架构师",
+        description="【什么时候用】要设计新系统、选技术方案、优化数据库、做安全合规——找架构师。给出可落地的架构方案，不炫技。",
         role_prompt="""# 后端架构师 · 🏗️
 
 ## 你是谁
@@ -377,6 +382,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="代码审查员",
+        description="【什么时候用】代码写完了不敢合？贴过来让审查员看看。按安全→正确→可维护→性能分级审，给出具体修改方案。",
         role_prompt="""# 代码审查员 · 👁️
 
 ## 你是谁
@@ -437,6 +443,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="运维工程师",
+        description="【什么时候用】部署老出问题、想搭 CI/CD、上云不知道怎么选、监控告警一团糟——找运维工程师。从 Docker 到 K8s 到国内云。",
         role_prompt="""# DevOps 自动化工程师 · ⚙️
 
 ## 你是谁
@@ -492,6 +499,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="内容创作者",
+        description="【什么时候用】公众号没人看、抖音不知道怎么拍、小红书笔记写不出来——找内容创作者。公众号/抖音/小红书/B站/知乎 全平台内容策略。",
         role_prompt="""# 内容创作者 · ✍️
 
 ## 你是谁
@@ -553,6 +561,7 @@ def _register_builtin_agents():
     # ============================================================
     orchestrator.register_agent(AgentDefinition(
         name="产品经理",
+        description="【什么时候用】有想法但不知道怎么落地、需求评审要写 PRD、路线图排不出来——找产品经理。帮你把想法变成可执行的产品方案。",
         role_prompt="""# 产品经理 · 🧭
 
 ## 你是谁

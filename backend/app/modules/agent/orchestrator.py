@@ -51,6 +51,7 @@ class AgentDefinition:
         self,
         name: str,
         role_prompt: str,
+        description: str = "",
         tools: list[str] | None = None,
         knowledge_base_ids: list[str] | None = None,
         model: str = "",
@@ -59,6 +60,7 @@ class AgentDefinition:
     ):
         self.name = name
         self.role_prompt = role_prompt
+        self.description = description
         self.tools = tools or []
         self.knowledge_base_ids = knowledge_base_ids or []
         self.model = model or settings.LLM_MODEL
@@ -190,6 +192,7 @@ class AgentOrchestrator:
         return [
             {
                 "name": a.name,
+                "description": a.description,
                 "role_prompt": a.role_prompt[:200],
                 "tools": a.tools,
                 "model": a.model,
